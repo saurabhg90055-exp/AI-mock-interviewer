@@ -4,19 +4,45 @@ import base64
 import io
 import re
 import time
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from datetime import datetime
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Optional, List
 from groq import Groq
 from dotenv import load_dotenv
 import shutil
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from sqlalchemy.orm import Session
+
+# Import database and auth modules
+from database import get_db, init_db, User, Interview, InterviewQuestion, UserSettings, APIUsage
+from auth import (
+    UserCreate, UserResponse, UserLogin, Token, PasswordChange, UserUpdate,
+    create_user, authenticate_user, get_user_by_email, get_user_by_username,
+    create_access_token, create_refresh_token, verify_token,
+    get_current_user, get_current_user_required, get_password_hash, verify_password
+)
 
 # Load environment variables from .env file
 load_dotenv()
 
-app = FastAPI()
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+app = FastAPI(
+    title="AI Mock Interviewer API",
+    description="Backend API for AI-powered mock interview practice",
+    version="2.0.0"
+)
+
+# Add rate limiter exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Secure API key loading
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -27,11 +53,27 @@ client = Groq(api_key=GROQ_API_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    print("🚀 AI Interviewer API started!")
+
+# Health check endpoint for Docker/K8s
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration"""
+    return {
+        "status": "healthy",
+        "service": "ai-interviewer-api",
+        "version": "2.0.0"
+    }
 
 # Store active interview sessions (in production, use Redis/Database)
 interview_sessions = {}
@@ -164,7 +206,177 @@ class ResumeParseRequest(BaseModel):
 
 @app.get("/")
 def health_check():
-    return {"status": "active", "message": "Backend is running"}
+    return {"status": "active", "message": "AI Interviewer Backend v2.0", "version": "2.0.0"}
+
+
+# ============== AUTHENTICATION ENDPOINTS ==============
+
+@app.post("/auth/register", response_model=Token)
+@limiter.limit("5/minute")
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
+    """Register a new user account"""
+    # Check if email already exists
+    if get_user_by_email(db, user_data.email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if username already exists
+    if get_user_by_username(db, user_data.username):
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Validate password strength
+    if len(user_data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    # Create user
+    user = create_user(db, user_data)
+    
+    # Generate tokens
+    access_token = create_access_token(data={"sub": user.id, "email": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user)
+    )
+
+
+@app.post("/auth/login", response_model=Token)
+@limiter.limit("10/minute")
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Login with email and password"""
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(data={"sub": user.id, "email": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user)
+    )
+
+
+@app.post("/auth/refresh", response_model=Token)
+async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+    """Refresh access token using refresh token"""
+    token_data = verify_token(refresh_token, token_type="refresh")
+    if not token_data:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    user = db.query(User).filter(User.id == token_data.user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    new_access_token = create_access_token(data={"sub": user.id, "email": user.email})
+    new_refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
+    
+    return Token(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user)
+    )
+
+
+@app.get("/auth/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user_required)):
+    """Get current user info"""
+    return UserResponse.model_validate(current_user)
+
+
+@app.put("/auth/me", response_model=UserResponse)
+async def update_me(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Update current user profile"""
+    if user_update.full_name is not None:
+        current_user.full_name = user_update.full_name
+    if user_update.email is not None:
+        # Check if email is already in use by another user
+        existing = get_user_by_email(db, user_update.email)
+        if existing and existing.id != current_user.id:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        current_user.email = user_update.email
+    
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+
+@app.post("/auth/change-password")
+async def change_password(
+    password_data: PasswordChange,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Change user password"""
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    if len(password_data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    
+    current_user.hashed_password = get_password_hash(password_data.new_password)
+    db.commit()
+    
+    return {"message": "Password changed successfully"}
+
+
+@app.get("/auth/settings")
+async def get_settings(
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Get user settings"""
+    settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    
+    return {
+        "preferred_topic": settings.preferred_topic,
+        "preferred_company": settings.preferred_company,
+        "preferred_difficulty": settings.preferred_difficulty,
+        "preferred_duration": settings.preferred_duration,
+        "enable_tts": settings.enable_tts,
+        "theme": settings.theme
+    }
+
+
+@app.put("/auth/settings")
+async def update_settings(
+    settings_data: dict,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Update user settings"""
+    settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.add(settings)
+    
+    for key, value in settings_data.items():
+        if hasattr(settings, key):
+            setattr(settings, key, value)
+    
+    db.commit()
+    return {"message": "Settings updated successfully"}
+
+
+# ============== INTERVIEW ENDPOINTS ==============
 
 @app.get("/topics")
 def get_topics():
@@ -312,7 +524,13 @@ Be concise and actionable."""
         raise HTTPException(status_code=500, detail=f"Failed to analyze job description: {str(e)}")
 
 @app.post("/interview/start")
-def start_interview(session: InterviewSession):
+@limiter.limit("20/minute")
+async def start_interview(
+    request: Request,
+    session: InterviewSession,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Start a new interview session"""
     session_id = str(uuid.uuid4())
     start_time = time.time()
@@ -403,11 +621,31 @@ IMPORTANT INSTRUCTIONS:
         "start_time": start_time,
         "duration_minutes": session.duration_minutes,
         "has_resume": bool(session.resume_text),
-        "has_job_description": bool(session.job_description)
+        "has_job_description": bool(session.job_description),
+        "user_id": current_user.id if current_user else None
     }
     
     interview_sessions[session_id]["history"].append({"role": "assistant", "content": opening})
     interview_sessions[session_id]["question_count"] = 1
+    
+    # Save to database
+    db_interview = Interview(
+        session_id=session_id,
+        user_id=current_user.id if current_user else None,
+        topic=session.topic,
+        topic_name=topic_config["name"],
+        company_style=session.company_style,
+        company_name=company_config["name"],
+        difficulty=session.difficulty,
+        duration_minutes=session.duration_minutes,
+        question_count=1,
+        transcript=[{"role": "assistant", "content": opening}],
+        has_resume=bool(session.resume_text),
+        has_job_description=bool(session.job_description),
+        status="active"
+    )
+    db.add(db_interview)
+    db.commit()
     
     return {
         "session_id": session_id,
@@ -422,7 +660,13 @@ IMPORTANT INSTRUCTIONS:
     }
 
 @app.post("/interview/{session_id}/analyze")
-async def analyze_audio(session_id: str, file: UploadFile = File(...)):
+@limiter.limit("30/minute")
+async def analyze_audio(
+    request: Request,
+    session_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
     """Process audio and continue the interview conversation"""
     
     if session_id not in interview_sessions:
@@ -513,7 +757,7 @@ async def analyze_audio(session_id: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/interview/{session_id}/end")
-def end_interview(session_id: str):
+async def end_interview(session_id: str, db: Session = Depends(get_db)):
     """End the interview and get summary"""
     
     if session_id not in interview_sessions:
@@ -526,6 +770,10 @@ def end_interview(session_id: str):
     avg_score = round(sum(scores) / len(scores), 1) if scores else None
     min_score = min(scores) if scores else None
     max_score = max(scores) if scores else None
+    
+    # Calculate duration
+    start_time = session.get("start_time", time.time())
+    duration_seconds = int(time.time() - start_time)
     
     # Generate summary using AI
     score_info = f"\nScores received: {scores}\nAverage score: {avg_score}/10" if scores else ""
@@ -563,6 +811,10 @@ Be constructive, specific, and actionable."""
     except Exception:
         summary = "Unable to generate summary. Please try again."
     
+    # Extract strengths and improvements from summary (basic extraction)
+    strengths = []
+    improvements = []
+    
     # Build comprehensive result
     result = {
         "session_id": session_id,
@@ -578,8 +830,22 @@ Be constructive, specific, and actionable."""
             "trend": "improving" if len(scores) >= 2 and scores[-1] > scores[0] else ("declining" if len(scores) >= 2 and scores[-1] < scores[0] else "stable")
         },
         "summary": summary,
-        "history": session["history"]
+        "history": session["history"],
+        "duration_seconds": duration_seconds
     }
+    
+    # Update database record
+    db_interview = db.query(Interview).filter(Interview.session_id == session_id).first()
+    if db_interview:
+        db_interview.scores = scores
+        db_interview.average_score = avg_score
+        db_interview.transcript = session["history"]
+        db_interview.summary = summary
+        db_interview.question_count = session["question_count"]
+        db_interview.ended_at = datetime.utcnow()
+        db_interview.duration_seconds = duration_seconds
+        db_interview.status = "completed"
+        db.commit()
     
     del interview_sessions[session_id]
     
@@ -652,3 +918,1191 @@ async def analyze_audio_legacy(file: UploadFile = File(...)):
     result = await analyze_audio(session_id, file)
     
     return result
+
+
+# ============== PHASE 4: FEEDBACK & ANALYTICS ==============
+
+# In-memory storage for interview history (in production, use database)
+interview_history = []
+
+class QuestionFeedback(BaseModel):
+    question_index: int
+    question: str
+    answer: str
+    score: Optional[int]
+    feedback: Optional[str] = None
+
+@app.post("/interview/{session_id}/question-feedback")
+async def get_question_feedback(session_id: str):
+    """Generate detailed feedback for each question-answer pair"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    history = session["history"]
+    scores = session.get("scores", [])
+    
+    # Parse conversation into Q&A pairs
+    qa_pairs = []
+    current_question = None
+    score_index = 0
+    
+    for i, msg in enumerate(history):
+        if msg["role"] == "assistant":
+            # Clean the question (remove score if present)
+            question = re.sub(r'\s*\[SCORE:\s*\d+/10\]', '', msg["content"]).strip()
+            current_question = question
+        elif msg["role"] == "user" and current_question:
+            score = scores[score_index] if score_index < len(scores) else None
+            qa_pairs.append({
+                "index": len(qa_pairs) + 1,
+                "question": current_question,
+                "answer": msg["content"],
+                "score": score
+            })
+            score_index += 1
+            current_question = None
+    
+    # Generate detailed feedback for each Q&A pair using AI
+    detailed_feedback = []
+    
+    for qa in qa_pairs:
+        feedback_prompt = f"""Analyze this interview question and answer:
+
+QUESTION: {qa['question']}
+ANSWER: {qa['answer']}
+SCORE: {qa['score']}/10
+
+Provide brief, actionable feedback (max 100 words) covering:
+1. What was done well
+2. What could be improved
+3. A better way to phrase the answer (if applicable)
+
+Format: Direct, constructive feedback without headers."""
+
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": feedback_prompt}],
+                temperature=0.5,
+                max_tokens=150
+            )
+            feedback = completion.choices[0].message.content
+        except Exception:
+            feedback = "Unable to generate feedback."
+        
+        detailed_feedback.append({
+            **qa,
+            "feedback": feedback,
+            "category": categorize_score(qa['score'])
+        })
+    
+    return {
+        "session_id": session_id,
+        "total_questions": len(detailed_feedback),
+        "questions": detailed_feedback
+    }
+
+
+def categorize_score(score: int) -> str:
+    """Categorize score into performance tier"""
+    if score is None:
+        return "unscored"
+    if score >= 8:
+        return "excellent"
+    elif score >= 6:
+        return "good"
+    elif score >= 4:
+        return "needs_improvement"
+    else:
+        return "poor"
+
+
+@app.get("/interview/{session_id}/analytics")
+def get_detailed_analytics(session_id: str):
+    """Get comprehensive analytics for the interview session"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    scores = session.get("scores", [])
+    history = session["history"]
+    
+    # Calculate time-based metrics
+    start_time = session.get("start_time", time.time())
+    elapsed_seconds = int(time.time() - start_time)
+    
+    # Word count analysis
+    user_words = []
+    ai_words = []
+    
+    for msg in history:
+        words = len(msg["content"].split())
+        if msg["role"] == "user":
+            user_words.append(words)
+        else:
+            ai_words.append(words)
+    
+    avg_user_words = round(sum(user_words) / len(user_words), 1) if user_words else 0
+    avg_ai_words = round(sum(ai_words) / len(ai_words), 1) if ai_words else 0
+    
+    # Score trend analysis
+    score_trend = []
+    if len(scores) >= 2:
+        for i in range(1, len(scores)):
+            change = scores[i] - scores[i-1]
+            score_trend.append({
+                "question": i + 1,
+                "score": scores[i],
+                "change": change,
+                "trend": "up" if change > 0 else ("down" if change < 0 else "stable")
+            })
+    
+    # Performance breakdown
+    excellent = sum(1 for s in scores if s >= 8)
+    good = sum(1 for s in scores if 6 <= s < 8)
+    needs_work = sum(1 for s in scores if 4 <= s < 6)
+    poor = sum(1 for s in scores if s < 4)
+    
+    # Calculate consistency score (standard deviation)
+    if len(scores) >= 2:
+        mean = sum(scores) / len(scores)
+        variance = sum((s - mean) ** 2 for s in scores) / len(scores)
+        std_dev = variance ** 0.5
+        consistency = max(0, 100 - (std_dev * 20))  # Lower std_dev = higher consistency
+    else:
+        consistency = 100
+    
+    return {
+        "session_id": session_id,
+        "topic": session.get("topic_name", session["topic"]),
+        "company_style": session.get("company_name", "Standard"),
+        "difficulty": session["difficulty"],
+        "duration": {
+            "elapsed_seconds": elapsed_seconds,
+            "elapsed_formatted": f"{elapsed_seconds // 60}:{elapsed_seconds % 60:02d}",
+            "planned_minutes": session.get("duration_minutes", 30)
+        },
+        "scores": {
+            "all": scores,
+            "average": round(sum(scores) / len(scores), 1) if scores else None,
+            "highest": max(scores) if scores else None,
+            "lowest": min(scores) if scores else None,
+            "first": scores[0] if scores else None,
+            "last": scores[-1] if scores else None,
+            "improvement": scores[-1] - scores[0] if len(scores) >= 2 else 0
+        },
+        "performance_breakdown": {
+            "excellent": excellent,
+            "good": good,
+            "needs_improvement": needs_work,
+            "poor": poor,
+            "excellent_percent": round(excellent / len(scores) * 100, 1) if scores else 0,
+            "pass_rate": round((excellent + good) / len(scores) * 100, 1) if scores else 0
+        },
+        "engagement": {
+            "total_questions": session["question_count"],
+            "total_responses": len(user_words),
+            "avg_response_length": avg_user_words,
+            "avg_question_length": avg_ai_words,
+            "total_user_words": sum(user_words),
+            "words_per_minute": round(sum(user_words) / (elapsed_seconds / 60), 1) if elapsed_seconds > 0 else 0
+        },
+        "consistency_score": round(consistency, 1),
+        "score_trend": score_trend,
+        "difficulty_adjustment": session.get("current_difficulty_adjustment", 0)
+    }
+
+
+@app.post("/interview/{session_id}/export")
+def export_interview_report(session_id: str):
+    """Export interview as a detailed report"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    scores = session.get("scores", [])
+    history = session["history"]
+    
+    # Calculate analytics
+    start_time = session.get("start_time", time.time())
+    elapsed_seconds = int(time.time() - start_time)
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    
+    # Build Q&A transcript
+    transcript = []
+    score_index = 0
+    
+    for msg in history:
+        entry = {
+            "role": "Interviewer" if msg["role"] == "assistant" else "You",
+            "content": re.sub(r'\s*\[SCORE:\s*\d+/10\]', '', msg["content"]).strip()
+        }
+        if msg["role"] == "user" and score_index < len(scores):
+            entry["score"] = scores[score_index]
+            score_index += 1
+        transcript.append(entry)
+    
+    # Build comprehensive report
+    report = {
+        "report_type": "AI Mock Interview Report",
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "session_id": session_id,
+        "interview_config": {
+            "topic": session.get("topic_name", session["topic"]),
+            "company_style": session.get("company_name", "Standard"),
+            "difficulty": session["difficulty"],
+            "duration_planned": f"{session.get('duration_minutes', 30)} minutes",
+            "duration_actual": f"{elapsed_seconds // 60}:{elapsed_seconds % 60:02d}",
+            "resume_provided": session.get("has_resume", False),
+            "job_description_provided": session.get("has_job_description", False)
+        },
+        "performance_summary": {
+            "total_questions": session["question_count"],
+            "scores": scores,
+            "average_score": avg_score,
+            "highest_score": max(scores) if scores else None,
+            "lowest_score": min(scores) if scores else None,
+            "score_trend": "Improving" if len(scores) >= 2 and scores[-1] > scores[0] else (
+                "Declining" if len(scores) >= 2 and scores[-1] < scores[0] else "Stable"
+            ),
+            "performance_grade": get_grade(avg_score) if avg_score else "N/A"
+        },
+        "transcript": transcript
+    }
+    
+    return report
+
+
+def get_grade(score: float) -> str:
+    """Convert numeric score to letter grade"""
+    if score >= 9:
+        return "A+"
+    elif score >= 8:
+        return "A"
+    elif score >= 7:
+        return "B+"
+    elif score >= 6:
+        return "B"
+    elif score >= 5:
+        return "C"
+    elif score >= 4:
+        return "D"
+    else:
+        return "F"
+
+
+@app.post("/interview/history/save")
+def save_to_history(session_id: str):
+    """Save completed interview to history"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    scores = session.get("scores", [])
+    
+    history_entry = {
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "date": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "topic": session.get("topic_name", session["topic"]),
+        "company_style": session.get("company_name", "Standard"),
+        "difficulty": session["difficulty"],
+        "questions_count": session["question_count"],
+        "average_score": round(sum(scores) / len(scores), 1) if scores else None,
+        "scores": scores,
+        "duration_seconds": int(time.time() - session.get("start_time", time.time()))
+    }
+    
+    interview_history.append(history_entry)
+    
+    return {"success": True, "history_id": history_entry["id"]}
+
+
+@app.get("/interview/history")
+def get_interview_history():
+    """Get all past interviews from history"""
+    return {
+        "total": len(interview_history),
+        "interviews": sorted(interview_history, key=lambda x: x["date"], reverse=True)
+    }
+
+
+@app.get("/interview/history/stats")
+def get_history_stats():
+    """Get aggregated statistics across all interviews"""
+    
+    if not interview_history:
+        return {
+            "total_interviews": 0,
+            "message": "No interview history yet"
+        }
+    
+    all_scores = []
+    topics = {}
+    companies = {}
+    difficulties = {}
+    total_questions = 0
+    total_duration = 0
+    
+    for entry in interview_history:
+        # Collect all scores
+        if entry.get("scores"):
+            all_scores.extend(entry["scores"])
+        
+        # Count by topic
+        topic = entry.get("topic", "Unknown")
+        topics[topic] = topics.get(topic, 0) + 1
+        
+        # Count by company
+        company = entry.get("company_style", "Standard")
+        companies[company] = companies.get(company, 0) + 1
+        
+        # Count by difficulty
+        diff = entry.get("difficulty", "medium")
+        difficulties[diff] = difficulties.get(diff, 0) + 1
+        
+        # Totals
+        total_questions += entry.get("questions_count", 0)
+        total_duration += entry.get("duration_seconds", 0)
+    
+    # Score trends over time
+    interview_averages = [
+        {"date": e["date"], "score": e["average_score"]}
+        for e in interview_history if e.get("average_score")
+    ]
+    
+    return {
+        "total_interviews": len(interview_history),
+        "total_questions_answered": total_questions,
+        "total_practice_time": f"{total_duration // 3600}h {(total_duration % 3600) // 60}m",
+        "overall_average_score": round(sum(all_scores) / len(all_scores), 1) if all_scores else None,
+        "highest_ever": max(all_scores) if all_scores else None,
+        "lowest_ever": min(all_scores) if all_scores else None,
+        "topics_practiced": topics,
+        "companies_practiced": companies,
+        "difficulties_practiced": difficulties,
+        "score_history": interview_averages,
+        "improvement": round(interview_averages[-1]["score"] - interview_averages[0]["score"], 1) if len(interview_averages) >= 2 else 0
+    }
+
+
+# ============== USER INTERVIEW HISTORY (DATABASE) ==============
+
+@app.get("/user/interviews")
+async def get_user_interviews(
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db),
+    limit: int = 20,
+    offset: int = 0
+):
+    """Get authenticated user's interview history from database"""
+    interviews = db.query(Interview).filter(
+        Interview.user_id == current_user.id,
+        Interview.status == "completed"
+    ).order_by(Interview.started_at.desc()).offset(offset).limit(limit).all()
+    
+    total = db.query(Interview).filter(
+        Interview.user_id == current_user.id,
+        Interview.status == "completed"
+    ).count()
+    
+    return {
+        "total": total,
+        "interviews": [
+            {
+                "id": i.id,
+                "session_id": i.session_id,
+                "topic": i.topic_name or i.topic,
+                "company_style": i.company_name or i.company_style,
+                "difficulty": i.difficulty,
+                "question_count": i.question_count,
+                "average_score": i.average_score,
+                "scores": i.scores,
+                "duration_seconds": i.duration_seconds,
+                "started_at": i.started_at.isoformat() if i.started_at else None,
+                "ended_at": i.ended_at.isoformat() if i.ended_at else None
+            }
+            for i in interviews
+        ]
+    }
+
+
+@app.get("/user/interviews/{interview_id}")
+async def get_user_interview_detail(
+    interview_id: int,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Get detailed view of a specific interview"""
+    interview = db.query(Interview).filter(
+        Interview.id == interview_id,
+        Interview.user_id == current_user.id
+    ).first()
+    
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    
+    return {
+        "id": interview.id,
+        "session_id": interview.session_id,
+        "topic": interview.topic_name or interview.topic,
+        "company_style": interview.company_name or interview.company_style,
+        "difficulty": interview.difficulty,
+        "duration_minutes": interview.duration_minutes,
+        "question_count": interview.question_count,
+        "scores": interview.scores,
+        "average_score": interview.average_score,
+        "transcript": interview.transcript,
+        "summary": interview.summary,
+        "strengths": interview.strengths,
+        "improvements": interview.improvements,
+        "has_resume": interview.has_resume,
+        "has_job_description": interview.has_job_description,
+        "started_at": interview.started_at.isoformat() if interview.started_at else None,
+        "ended_at": interview.ended_at.isoformat() if interview.ended_at else None,
+        "duration_seconds": interview.duration_seconds
+    }
+
+
+@app.delete("/user/interviews/{interview_id}")
+async def delete_user_interview(
+    interview_id: int,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific interview from user's history"""
+    interview = db.query(Interview).filter(
+        Interview.id == interview_id,
+        Interview.user_id == current_user.id
+    ).first()
+    
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    
+    db.delete(interview)
+    db.commit()
+    
+    return {"message": "Interview deleted successfully"}
+
+
+@app.get("/user/stats")
+async def get_user_stats(
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive statistics for authenticated user"""
+    interviews = db.query(Interview).filter(
+        Interview.user_id == current_user.id,
+        Interview.status == "completed"
+    ).all()
+    
+    if not interviews:
+        return {
+            "total_interviews": 0,
+            "message": "No completed interviews yet"
+        }
+    
+    all_scores = []
+    topics = {}
+    companies = {}
+    difficulties = {}
+    total_questions = 0
+    total_duration = 0
+    
+    for i in interviews:
+        if i.scores:
+            all_scores.extend(i.scores)
+        
+        topic = i.topic_name or i.topic or "Unknown"
+        topics[topic] = topics.get(topic, 0) + 1
+        
+        company = i.company_name or i.company_style or "Standard"
+        companies[company] = companies.get(company, 0) + 1
+        
+        diff = i.difficulty or "medium"
+        difficulties[diff] = difficulties.get(diff, 0) + 1
+        
+        total_questions += i.question_count or 0
+        total_duration += i.duration_seconds or 0
+    
+    # Score progression over time
+    score_progression = [
+        {
+            "date": i.started_at.strftime("%Y-%m-%d") if i.started_at else None,
+            "score": i.average_score,
+            "topic": i.topic_name or i.topic
+        }
+        for i in sorted(interviews, key=lambda x: x.started_at or datetime.min)
+        if i.average_score
+    ]
+    
+    # Calculate improvement
+    improvement = 0
+    if len(score_progression) >= 2:
+        improvement = round(score_progression[-1]["score"] - score_progression[0]["score"], 1)
+    
+    return {
+        "total_interviews": len(interviews),
+        "total_questions_answered": total_questions,
+        "total_practice_time_seconds": total_duration,
+        "total_practice_time_formatted": f"{total_duration // 3600}h {(total_duration % 3600) // 60}m",
+        "overall_average_score": round(sum(all_scores) / len(all_scores), 1) if all_scores else None,
+        "highest_score": max(all_scores) if all_scores else None,
+        "lowest_score": min(all_scores) if all_scores else None,
+        "topics_practiced": topics,
+        "companies_practiced": companies,
+        "difficulties_practiced": difficulties,
+        "score_progression": score_progression,
+        "improvement": improvement,
+        "member_since": current_user.created_at.strftime("%Y-%m-%d") if current_user.created_at else None,
+        "is_premium": current_user.is_premium
+    }
+
+
+# ============== GLOBAL STATS ==============
+
+@app.get("/stats/global")
+async def get_global_stats(db: Session = Depends(get_db)):
+    """Get platform-wide statistics (public)"""
+    total_interviews = db.query(Interview).filter(Interview.status == "completed").count()
+    total_users = db.query(User).count()
+    
+    # Get average score across all interviews
+    completed_interviews = db.query(Interview).filter(
+        Interview.status == "completed",
+        Interview.average_score.isnot(None)
+    ).all()
+    
+    avg_scores = [i.average_score for i in completed_interviews if i.average_score]
+    platform_avg = round(sum(avg_scores) / len(avg_scores), 1) if avg_scores else None
+    
+    return {
+        "total_interviews_completed": total_interviews,
+        "total_users": total_users,
+        "platform_average_score": platform_avg,
+        "topics_available": len(INTERVIEW_TOPICS),
+        "companies_available": len(COMPANY_STYLES)
+    }
+
+
+# ============== PHASE 6: ADVANCED FEATURES ==============
+
+# Common filler words to detect
+FILLER_WORDS = [
+    "um", "uh", "er", "ah", "like", "you know", "basically", "actually", 
+    "literally", "honestly", "right", "so", "well", "I mean", "kind of", 
+    "sort of", "just", "really", "very", "totally", "definitely"
+]
+
+# STAR method keywords
+STAR_KEYWORDS = {
+    "situation": ["situation", "context", "background", "scenario", "when", "there was", "at my previous", "in my role"],
+    "task": ["task", "responsibility", "goal", "objective", "needed to", "had to", "was asked to", "my job was"],
+    "action": ["action", "did", "implemented", "created", "developed", "led", "initiated", "decided", "took steps", "approached"],
+    "result": ["result", "outcome", "achieved", "accomplished", "improved", "increased", "decreased", "saved", "led to", "resulted in", "impact"]
+}
+
+
+def analyze_speech_quality(text: str) -> dict:
+    """Analyze speech quality metrics from transcribed text"""
+    words = text.lower().split()
+    word_count = len(words)
+    
+    # Count filler words
+    filler_count = 0
+    filler_details = {}
+    text_lower = text.lower()
+    
+    for filler in FILLER_WORDS:
+        count = text_lower.count(filler)
+        if count > 0:
+            filler_count += count
+            filler_details[filler] = count
+    
+    # Calculate filler ratio
+    filler_ratio = round(filler_count / word_count * 100, 1) if word_count > 0 else 0
+    
+    # Sentence analysis
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    avg_sentence_length = round(word_count / len(sentences), 1) if sentences else 0
+    
+    # Vocabulary diversity (unique words ratio)
+    unique_words = set(words)
+    vocab_diversity = round(len(unique_words) / word_count * 100, 1) if word_count > 0 else 0
+    
+    # Clarity score (based on filler ratio and sentence structure)
+    clarity_score = max(0, min(10, 10 - (filler_ratio * 0.5) - (abs(avg_sentence_length - 15) * 0.1)))
+    
+    # Confidence indicators
+    hedging_words = ["maybe", "perhaps", "might", "could", "possibly", "i think", "i guess", "not sure"]
+    hedging_count = sum(text_lower.count(word) for word in hedging_words)
+    confidence_score = max(0, min(10, 10 - (hedging_count * 1.5) - (filler_ratio * 0.3)))
+    
+    # Determine quality level
+    if filler_ratio < 3:
+        filler_quality = "excellent"
+    elif filler_ratio < 6:
+        filler_quality = "good"
+    elif filler_ratio < 10:
+        filler_quality = "fair"
+    else:
+        filler_quality = "needs_work"
+    
+    return {
+        "word_count": word_count,
+        "sentence_count": len(sentences),
+        "avg_sentence_length": avg_sentence_length,
+        "filler_words": {
+            "count": filler_count,
+            "ratio_percent": filler_ratio,
+            "quality": filler_quality,
+            "details": filler_details
+        },
+        "vocabulary": {
+            "unique_words": len(unique_words),
+            "diversity_percent": vocab_diversity,
+            "quality": "excellent" if vocab_diversity > 60 else ("good" if vocab_diversity > 40 else "fair")
+        },
+        "clarity_score": round(clarity_score, 1),
+        "confidence_score": round(confidence_score, 1),
+        "hedging_count": hedging_count
+    }
+
+
+def detect_star_method(text: str) -> dict:
+    """Detect STAR method components in behavioral answers"""
+    text_lower = text.lower()
+    
+    detected = {
+        "situation": False,
+        "task": False,
+        "action": False,
+        "result": False
+    }
+    
+    evidence = {
+        "situation": [],
+        "task": [],
+        "action": [],
+        "result": []
+    }
+    
+    # Check each STAR component
+    for component, keywords in STAR_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in text_lower:
+                detected[component] = True
+                evidence[component].append(keyword)
+    
+    # Calculate STAR completeness
+    components_found = sum(detected.values())
+    completeness = round(components_found / 4 * 100, 0)
+    
+    # Generate feedback
+    missing = [k.upper() for k, v in detected.items() if not v]
+    
+    if completeness == 100:
+        feedback = "Excellent! Your answer follows the complete STAR method with all components clearly present."
+        quality = "excellent"
+    elif completeness >= 75:
+        feedback = f"Good structure! Consider strengthening the {', '.join(missing)} component(s)."
+        quality = "good"
+    elif completeness >= 50:
+        feedback = f"Partial STAR structure. Missing: {', '.join(missing)}. Try to include these for a stronger answer."
+        quality = "fair"
+    else:
+        feedback = "Your answer could benefit from the STAR method structure. Include: Situation, Task, Action, Result."
+        quality = "needs_improvement"
+    
+    return {
+        "detected_components": detected,
+        "evidence": evidence,
+        "completeness_percent": completeness,
+        "quality": quality,
+        "feedback": feedback,
+        "missing_components": missing
+    }
+
+
+def generate_coaching_tips(speech_analysis: dict, star_analysis: dict, score: int = None) -> list:
+    """Generate personalized coaching tips based on analysis"""
+    tips = []
+    
+    # Speech quality tips
+    filler_ratio = speech_analysis["filler_words"]["ratio_percent"]
+    if filler_ratio > 5:
+        top_fillers = sorted(speech_analysis["filler_words"]["details"].items(), key=lambda x: x[1], reverse=True)[:3]
+        filler_list = ", ".join([f'"{f[0]}"' for f in top_fillers])
+        tips.append({
+            "category": "speech",
+            "priority": "high" if filler_ratio > 10 else "medium",
+            "icon": "🎤",
+            "title": "Reduce Filler Words",
+            "tip": f"You used filler words {filler_ratio}% of the time. Focus on reducing: {filler_list}. Try pausing instead of using fillers.",
+            "practice": "Record yourself answering questions and count filler words. Practice pausing silently instead."
+        })
+    
+    # Sentence length tips
+    avg_len = speech_analysis["avg_sentence_length"]
+    if avg_len > 25:
+        tips.append({
+            "category": "clarity",
+            "priority": "medium",
+            "icon": "📝",
+            "title": "Shorten Your Sentences",
+            "tip": f"Your average sentence has {avg_len} words. Aim for 15-20 words for clearer communication.",
+            "practice": "Practice breaking complex ideas into multiple shorter sentences."
+        })
+    elif avg_len < 8:
+        tips.append({
+            "category": "clarity",
+            "priority": "low",
+            "icon": "📝",
+            "title": "Elaborate More",
+            "tip": "Your sentences are quite short. Consider providing more detail and context in your answers.",
+            "practice": "Use the 'because' technique: finish thoughts with 'because...' to add depth."
+        })
+    
+    # Confidence tips
+    if speech_analysis["confidence_score"] < 6:
+        tips.append({
+            "category": "confidence",
+            "priority": "high",
+            "icon": "💪",
+            "title": "Project More Confidence",
+            "tip": "Your language suggests uncertainty. Replace 'I think' with 'I believe' and avoid 'maybe' and 'perhaps'.",
+            "practice": "Practice stating your opinions as facts, then add qualifiers only if truly necessary."
+        })
+    
+    # Vocabulary tips
+    if speech_analysis["vocabulary"]["diversity_percent"] < 40:
+        tips.append({
+            "category": "vocabulary",
+            "priority": "low",
+            "icon": "📚",
+            "title": "Expand Your Vocabulary",
+            "tip": "Try using more varied vocabulary to demonstrate breadth of knowledge.",
+            "practice": "Learn 3 new industry-specific terms each week and practice using them."
+        })
+    
+    # STAR method tips
+    if star_analysis["completeness_percent"] < 100:
+        missing = star_analysis["missing_components"]
+        tips.append({
+            "category": "structure",
+            "priority": "high" if len(missing) > 2 else "medium",
+            "icon": "⭐",
+            "title": "Use STAR Method",
+            "tip": star_analysis["feedback"],
+            "practice": f"Before answering behavioral questions, mentally outline: Situation → Task → Action → Result"
+        })
+    
+    # Score-based tips
+    if score is not None:
+        if score < 5:
+            tips.append({
+                "category": "content",
+                "priority": "high",
+                "icon": "🎯",
+                "title": "Focus on Specifics",
+                "tip": "Your answer lacked specific details. Include concrete examples, metrics, and outcomes.",
+                "practice": "Prepare 5 detailed stories from your experience with specific numbers and results."
+            })
+        elif score < 7:
+            tips.append({
+                "category": "content",
+                "priority": "medium",
+                "icon": "🎯",
+                "title": "Add More Impact",
+                "tip": "Good foundation, but quantify your achievements more. Use numbers and percentages.",
+                "practice": "For each accomplishment, note the specific impact: time saved, revenue generated, problems solved."
+            })
+    
+    # Sort by priority
+    priority_order = {"high": 0, "medium": 1, "low": 2}
+    tips.sort(key=lambda x: priority_order.get(x["priority"], 3))
+    
+    return tips[:5]  # Return top 5 tips
+
+
+@app.post("/interview/{session_id}/speech-analysis")
+async def analyze_speech(session_id: str, answer_index: int = -1):
+    """Analyze speech quality for a specific answer or the latest one"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    history = session["history"]
+    
+    # Get user messages only
+    user_messages = [msg for msg in history if msg["role"] == "user"]
+    
+    if not user_messages:
+        raise HTTPException(status_code=400, detail="No user responses to analyze")
+    
+    # Get specific answer or latest
+    if answer_index == -1:
+        text = user_messages[-1]["content"]
+        answer_num = len(user_messages)
+    else:
+        if answer_index >= len(user_messages):
+            raise HTTPException(status_code=400, detail="Invalid answer index")
+        text = user_messages[answer_index]["content"]
+        answer_num = answer_index + 1
+    
+    # Perform analysis
+    speech_quality = analyze_speech_quality(text)
+    star_analysis = detect_star_method(text)
+    
+    # Get score for this answer if available
+    scores = session.get("scores", [])
+    score = scores[answer_num - 1] if answer_num <= len(scores) else None
+    
+    # Generate coaching tips
+    coaching_tips = generate_coaching_tips(speech_quality, star_analysis, score)
+    
+    return {
+        "session_id": session_id,
+        "answer_number": answer_num,
+        "text_analyzed": text[:200] + "..." if len(text) > 200 else text,
+        "speech_quality": speech_quality,
+        "star_analysis": star_analysis,
+        "score": score,
+        "coaching_tips": coaching_tips
+    }
+
+
+@app.get("/interview/{session_id}/coaching")
+async def get_live_coaching(session_id: str):
+    """Get real-time coaching feedback for ongoing interview"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    history = session["history"]
+    scores = session.get("scores", [])
+    
+    # Analyze all user responses
+    user_messages = [msg["content"] for msg in history if msg["role"] == "user"]
+    
+    if not user_messages:
+        return {
+            "session_id": session_id,
+            "status": "waiting",
+            "message": "No responses yet. Start answering to receive coaching."
+        }
+    
+    # Aggregate speech analysis
+    all_filler_counts = {}
+    total_words = 0
+    total_fillers = 0
+    all_confidence_scores = []
+    all_star_completeness = []
+    
+    for text in user_messages:
+        speech = analyze_speech_quality(text)
+        star = detect_star_method(text)
+        
+        total_words += speech["word_count"]
+        total_fillers += speech["filler_words"]["count"]
+        all_confidence_scores.append(speech["confidence_score"])
+        all_star_completeness.append(star["completeness_percent"])
+        
+        for filler, count in speech["filler_words"]["details"].items():
+            all_filler_counts[filler] = all_filler_counts.get(filler, 0) + count
+    
+    # Calculate aggregates
+    overall_filler_ratio = round(total_fillers / total_words * 100, 1) if total_words > 0 else 0
+    avg_confidence = round(sum(all_confidence_scores) / len(all_confidence_scores), 1)
+    avg_star_completeness = round(sum(all_star_completeness) / len(all_star_completeness), 0)
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    
+    # Top filler words
+    top_fillers = sorted(all_filler_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    # Generate overall coaching
+    strengths = []
+    improvements = []
+    
+    if overall_filler_ratio < 5:
+        strengths.append("Clean speech with minimal filler words")
+    else:
+        improvements.append(f"Reduce filler words (currently {overall_filler_ratio}% of speech)")
+    
+    if avg_confidence >= 7:
+        strengths.append("Confident and assertive communication")
+    else:
+        improvements.append("Work on projecting more confidence in your tone")
+    
+    if avg_star_completeness >= 75:
+        strengths.append("Good use of STAR method structure")
+    else:
+        improvements.append("Apply STAR method more consistently")
+    
+    if avg_score and avg_score >= 7:
+        strengths.append("Strong technical/content quality")
+    elif avg_score and avg_score < 5:
+        improvements.append("Focus on providing more specific examples")
+    
+    # Determine overall status
+    score_factors = [
+        avg_score or 5,
+        avg_confidence,
+        10 - (overall_filler_ratio / 2),
+        avg_star_completeness / 10
+    ]
+    overall_performance = round(sum(score_factors) / len(score_factors), 1)
+    
+    if overall_performance >= 7:
+        status_emoji = "🌟"
+        status_message = "Excellent performance! Keep up the great work."
+    elif overall_performance >= 5:
+        status_emoji = "👍"
+        status_message = "Good progress. Focus on the improvement areas below."
+    else:
+        status_emoji = "💪"
+        status_message = "Room for improvement. Review the coaching tips carefully."
+    
+    return {
+        "session_id": session_id,
+        "status": "active",
+        "responses_analyzed": len(user_messages),
+        "overall_performance": {
+            "score": overall_performance,
+            "emoji": status_emoji,
+            "message": status_message
+        },
+        "metrics": {
+            "average_score": avg_score,
+            "confidence_score": avg_confidence,
+            "filler_ratio_percent": overall_filler_ratio,
+            "star_completeness_percent": avg_star_completeness,
+            "total_words_spoken": total_words
+        },
+        "top_filler_words": top_fillers,
+        "strengths": strengths,
+        "improvements": improvements,
+        "quick_tips": [
+            "🎯 Pause before answering to collect your thoughts",
+            "📊 Include specific numbers and metrics",
+            "⭐ Structure behavioral answers: Situation → Task → Action → Result",
+            "💪 Replace 'I think' with 'I believe' for more confidence"
+        ]
+    }
+
+
+@app.post("/interview/{session_id}/ai-coaching")
+async def get_ai_coaching(session_id: str):
+    """Get AI-generated personalized coaching based on interview performance"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    history = session["history"]
+    scores = session.get("scores", [])
+    
+    if len(history) < 2:
+        raise HTTPException(status_code=400, detail="Need more conversation history for coaching")
+    
+    # Build coaching prompt
+    coaching_prompt = f"""You are an expert interview coach. Analyze this interview conversation and provide personalized coaching feedback.
+
+INTERVIEW DETAILS:
+- Topic: {session.get('topic_name', session['topic'])}
+- Company Style: {session.get('company_name', 'Standard')}
+- Difficulty: {session['difficulty']}
+- Questions Asked: {session['question_count']}
+- Scores Received: {scores if scores else 'Not available'}
+- Average Score: {round(sum(scores)/len(scores), 1) if scores else 'N/A'}
+
+CONVERSATION:
+{chr(10).join([f"{msg['role'].upper()}: {msg['content'][:300]}" for msg in history[-10:]])}
+
+Provide coaching in this exact JSON format:
+{{
+    "overall_grade": "A/B/C/D/F",
+    "key_strengths": ["strength1", "strength2", "strength3"],
+    "critical_improvements": ["improvement1", "improvement2", "improvement3"],
+    "specific_answer_feedback": [
+        {{"question_topic": "topic", "what_worked": "...", "what_to_improve": "..."}}
+    ],
+    "practice_exercises": [
+        {{"exercise": "name", "description": "how to do it", "duration": "time"}}
+    ],
+    "next_steps": "1-2 sentence action plan",
+    "motivational_note": "encouraging message"
+}}
+
+Be specific, actionable, and encouraging. Focus on the most impactful improvements."""
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": coaching_prompt}],
+            temperature=0.5,
+            max_tokens=800
+        )
+        
+        response_text = completion.choices[0].message.content
+        
+        # Try to parse as JSON
+        import json
+        try:
+            # Find JSON in response
+            json_match = re.search(r'\{[\s\S]*\}', response_text)
+            if json_match:
+                coaching_data = json.loads(json_match.group())
+            else:
+                coaching_data = {"raw_feedback": response_text}
+        except json.JSONDecodeError:
+            coaching_data = {"raw_feedback": response_text}
+        
+        return {
+            "session_id": session_id,
+            "coaching": coaching_data,
+            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "questions_analyzed": session["question_count"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate coaching: {str(e)}")
+
+
+@app.get("/interview/{session_id}/improvement-plan")
+async def get_improvement_plan(session_id: str):
+    """Generate a structured improvement plan based on interview performance"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    history = session["history"]
+    scores = session.get("scores", [])
+    
+    # Analyze all responses
+    user_messages = [msg["content"] for msg in history if msg["role"] == "user"]
+    
+    if not user_messages:
+        raise HTTPException(status_code=400, detail="No responses to analyze")
+    
+    # Aggregate metrics
+    speech_metrics = []
+    star_metrics = []
+    
+    for text in user_messages:
+        speech_metrics.append(analyze_speech_quality(text))
+        star_metrics.append(detect_star_method(text))
+    
+    # Calculate averages
+    avg_filler = round(sum(m["filler_words"]["ratio_percent"] for m in speech_metrics) / len(speech_metrics), 1)
+    avg_confidence = round(sum(m["confidence_score"] for m in speech_metrics) / len(speech_metrics), 1)
+    avg_clarity = round(sum(m["clarity_score"] for m in speech_metrics) / len(speech_metrics), 1)
+    avg_star = round(sum(m["completeness_percent"] for m in star_metrics) / len(star_metrics), 0)
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    
+    # Build improvement plan
+    plan_items = []
+    
+    # Week 1-2: Speech Quality
+    if avg_filler > 5:
+        plan_items.append({
+            "week": "1-2",
+            "focus": "Speech Clarity",
+            "goal": f"Reduce filler words from {avg_filler}% to under 3%",
+            "activities": [
+                "Record yourself answering 3 practice questions daily",
+                "Count and track your filler word usage",
+                "Practice 3-second pauses instead of fillers",
+                "Use the 'Toastmasters Ah-Counter' technique"
+            ],
+            "metrics": ["Filler word percentage", "Pause frequency"]
+        })
+    
+    # Week 2-3: Confidence
+    if avg_confidence < 7:
+        plan_items.append({
+            "week": "2-3",
+            "focus": "Confidence Building",
+            "goal": f"Increase confidence score from {avg_confidence} to 8+",
+            "activities": [
+                "Replace hedging language ('I think') with assertive statements",
+                "Practice power poses before mock interviews",
+                "Prepare and memorize your top 5 achievement stories",
+                "Record and review your body language"
+            ],
+            "metrics": ["Hedging word count", "Self-rated confidence"]
+        })
+    
+    # Week 3-4: STAR Method
+    if avg_star < 80:
+        plan_items.append({
+            "week": "3-4",
+            "focus": "STAR Method Mastery",
+            "goal": f"Achieve {avg_star}% → 100% STAR completeness",
+            "activities": [
+                "Write out 10 STAR stories from your experience",
+                "Practice verbalizing each component separately",
+                "Time yourself: 30 sec Situation, 15 sec Task, 60 sec Action, 30 sec Result",
+                "Get feedback from a friend or mentor"
+            ],
+            "metrics": ["STAR completeness %", "Story bank size"]
+        })
+    
+    # Week 4+: Technical Content
+    if avg_score and avg_score < 7:
+        plan_items.append({
+            "week": "4+",
+            "focus": "Technical Depth",
+            "goal": f"Improve answer quality from {avg_score}/10 to 8+/10",
+            "activities": [
+                f"Review common {session.get('topic_name', session['topic'])} interview questions",
+                "Study system design fundamentals",
+                "Practice explaining concepts to non-technical people",
+                "Build a 'technical vocabulary' list for your domain"
+            ],
+            "metrics": ["Mock interview scores", "Topics mastered"]
+        })
+    
+    # If everything is good, add advanced tips
+    if not plan_items:
+        plan_items.append({
+            "week": "Ongoing",
+            "focus": "Excellence & Consistency",
+            "goal": "Maintain high performance and handle edge cases",
+            "activities": [
+                "Practice with different interview styles",
+                "Work on handling unexpected questions",
+                "Focus on storytelling and engagement",
+                "Mentor others to solidify your knowledge"
+            ],
+            "metrics": ["Consistency score", "Interviewer feedback"]
+        })
+    
+    return {
+        "session_id": session_id,
+        "current_performance": {
+            "content_score": avg_score,
+            "confidence_score": avg_confidence,
+            "clarity_score": avg_clarity,
+            "filler_ratio": avg_filler,
+            "star_completeness": avg_star
+        },
+        "improvement_plan": plan_items,
+        "estimated_duration": f"{len(plan_items) * 2} weeks",
+        "recommended_practice": "3-4 mock interviews per week",
+        "success_criteria": {
+            "content_score": "8+/10",
+            "confidence_score": "8+/10",
+            "filler_ratio": "< 3%",
+            "star_completeness": "100%"
+        }
+    }

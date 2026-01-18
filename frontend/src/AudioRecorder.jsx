@@ -1,8 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+// API URL - use environment variable or default to localhost
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const AudioRecorder = () => {
+    // Auth state (Phase 5)
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState(null);
+    const [authToken, setAuthToken] = useState(localStorage.getItem('authToken') || null);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+    const [authEmail, setAuthEmail] = useState('');
+    const [authUsername, setAuthUsername] = useState('');
+    const [authPassword, setAuthPassword] = useState('');
+    const [authFullName, setAuthFullName] = useState('');
+    const [authError, setAuthError] = useState('');
+    const [isAuthLoading, setIsAuthLoading] = useState(false);
+    const [userStats, setUserStats] = useState(null);
+    
     // Session state
     const [sessionId, setSessionId] = useState(null);
     const [selectedTopic, setSelectedTopic] = useState("general");
@@ -45,10 +60,31 @@ const AudioRecorder = () => {
     const [currentScore, setCurrentScore] = useState(null);
     const [averageScore, setAverageScore] = useState(null);
     const [difficultyTrend, setDifficultyTrend] = useState("stable");
+    const [allScores, setAllScores] = useState([]);
     
     // Summary state
     const [showSummary, setShowSummary] = useState(false);
     const [summary, setSummary] = useState(null);
+    
+    // Phase 4: Analytics state
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [analytics, setAnalytics] = useState(null);
+    const [questionFeedback, setQuestionFeedback] = useState(null);
+    const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+    const [interviewHistory, setInterviewHistory] = useState([]);
+    const [historyStats, setHistoryStats] = useState(null);
+    
+    // Phase 6: Coaching state
+    const [showCoaching, setShowCoaching] = useState(false);
+    const [liveCoaching, setLiveCoaching] = useState(null);
+    const [speechAnalysis, setSpeechAnalysis] = useState(null);
+    const [aiCoaching, setAiCoaching] = useState(null);
+    const [improvementPlan, setImprovementPlan] = useState(null);
+    const [isLoadingCoaching, setIsLoadingCoaching] = useState(false);
+    
+    // Phase 7: Error handling & notifications
+    const [notification, setNotification] = useState(null);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
     
     // Setup step state
     const [setupStep, setSetupStep] = useState(1); // 1: basics, 2: resume/JD, 3: confirm
@@ -61,6 +97,32 @@ const AudioRecorder = () => {
     const recordingTimerRef = useRef(null);
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
+
+    // Notification helper
+    const showNotification = useCallback((message, type = 'info', duration = 4000) => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), duration);
+    }, []);
+    
+    // Online/offline detection
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            showNotification('You are back online!', 'success');
+        };
+        const handleOffline = () => {
+            setIsOnline(false);
+            showNotification('You are offline. Some features may not work.', 'warning');
+        };
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [showNotification]);
 
     // Fetch available options on mount
     useEffect(() => {
@@ -92,6 +154,7 @@ const AudioRecorder = () => {
                     setElapsedTime(data.elapsed_seconds);
                     setRemainingTime(data.remaining_seconds);
                     setIsTimeWarning(data.is_warning);
+
                     setIsTimeUp(data.is_time_up);
                 } catch (error) {
                     console.error("Timer error:", error);
@@ -176,6 +239,289 @@ const AudioRecorder = () => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Phase 4: Fetch detailed analytics
+    const fetchAnalytics = async () => {
+        if (!sessionId) return;
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/analytics`);
+            const data = await response.json();
+            setAnalytics(data);
+        } catch (error) {
+            console.error("Error fetching analytics:", error);
+        }
+    };
+
+    // Phase 4: Fetch question-by-question feedback
+    const fetchQuestionFeedback = async () => {
+        if (!sessionId) return;
+        setIsLoadingFeedback(true);
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/question-feedback`, {
+                method: "POST"
+            });
+            const data = await response.json();
+            setQuestionFeedback(data);
+        } catch (error) {
+            console.error("Error fetching feedback:", error);
+        }
+        setIsLoadingFeedback(false);
+    };
+
+    // Phase 4: Save interview to history
+    const saveToHistory = async () => {
+        if (!sessionId) return;
+        try {
+            await fetch(`${API_URL}/interview/history/save?session_id=${sessionId}`, {
+                method: "POST"
+            });
+            fetchInterviewHistory();
+        } catch (error) {
+            console.error("Error saving to history:", error);
+        }
+    };
+
+    // Phase 4: Fetch interview history
+    const fetchInterviewHistory = async () => {
+        try {
+            const response = await fetch(`${API_URL}/interview/history`);
+            const data = await response.json();
+            setInterviewHistory(data.interviews || []);
+        } catch (error) {
+            console.error("Error fetching history:", error);
+        }
+    };
+
+    // Phase 4: Fetch history stats
+    const fetchHistoryStats = async () => {
+        try {
+            const response = await fetch(`${API_URL}/interview/history/stats`);
+            const data = await response.json();
+            setHistoryStats(data);
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+        }
+    };
+
+    // ============== PHASE 6: COACHING FUNCTIONS ==============
+    
+    const fetchLiveCoaching = async () => {
+        if (!sessionId) return;
+        setIsLoadingCoaching(true);
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/coaching`);
+            const data = await response.json();
+            setLiveCoaching(data);
+        } catch (error) {
+            console.error("Error fetching live coaching:", error);
+        }
+        setIsLoadingCoaching(false);
+    };
+    
+    const fetchSpeechAnalysis = async () => {
+        if (!sessionId) return;
+        setIsLoadingCoaching(true);
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/speech-analysis`, {
+                method: "POST"
+            });
+            const data = await response.json();
+            setSpeechAnalysis(data);
+        } catch (error) {
+            console.error("Error fetching speech analysis:", error);
+        }
+        setIsLoadingCoaching(false);
+    };
+    
+    const fetchAiCoaching = async () => {
+        if (!sessionId) return;
+        setIsLoadingCoaching(true);
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/ai-coaching`, {
+                method: "POST"
+            });
+            const data = await response.json();
+            setAiCoaching(data);
+        } catch (error) {
+            console.error("Error fetching AI coaching:", error);
+        }
+        setIsLoadingCoaching(false);
+    };
+    
+    const fetchImprovementPlan = async () => {
+        if (!sessionId) return;
+        setIsLoadingCoaching(true);
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/improvement-plan`);
+            const data = await response.json();
+            setImprovementPlan(data);
+        } catch (error) {
+            console.error("Error fetching improvement plan:", error);
+        }
+        setIsLoadingCoaching(false);
+    };
+
+    // ============== PHASE 5: AUTHENTICATION ==============
+    
+    // Check auth status on mount
+    useEffect(() => {
+        if (authToken) {
+            verifyAuth();
+        }
+    }, []);
+    
+    const verifyAuth = async () => {
+        try {
+            const response = await fetch(`${API_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setUser(data);
+                setIsAuthenticated(true);
+                fetchUserStats();
+            } else {
+                // Token expired or invalid
+                handleLogout();
+            }
+        } catch (error) {
+            console.error("Auth verification error:", error);
+            handleLogout();
+        }
+    };
+    
+    const fetchUserStats = async () => {
+        if (!authToken) return;
+        try {
+            const response = await fetch(`${API_URL}/user/stats`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setUserStats(data);
+            }
+        } catch (error) {
+            console.error("Error fetching user stats:", error);
+        }
+    };
+    
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setAuthError('');
+        setIsAuthLoading(true);
+        
+        try {
+            const formData = new URLSearchParams();
+            formData.append('username', authEmail);
+            formData.append('password', authPassword);
+            
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                localStorage.setItem('authToken', data.access_token);
+                setAuthToken(data.access_token);
+                setUser(data.user);
+                setIsAuthenticated(true);
+                setShowAuthModal(false);
+                resetAuthForm();
+                fetchUserStats();
+            } else {
+                setAuthError(data.detail || 'Login failed');
+            }
+        } catch (error) {
+            setAuthError('Network error. Please try again.');
+        }
+        setIsAuthLoading(false);
+    };
+    
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        setAuthError('');
+        setIsAuthLoading(true);
+        
+        if (authPassword.length < 8) {
+            setAuthError('Password must be at least 8 characters');
+            setIsAuthLoading(false);
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: authEmail,
+                    username: authUsername || authEmail.split('@')[0],
+                    password: authPassword,
+                    full_name: authFullName
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                localStorage.setItem('authToken', data.access_token);
+                setAuthToken(data.access_token);
+                setUser(data.user);
+                setIsAuthenticated(true);
+                setShowAuthModal(false);
+                resetAuthForm();
+            } else {
+                setAuthError(data.detail || 'Registration failed');
+            }
+        } catch (error) {
+            setAuthError('Network error. Please try again.');
+        }
+        setIsAuthLoading(false);
+    };
+    
+    const handleLogout = () => {
+        localStorage.removeItem('authToken');
+        setAuthToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+        setUserStats(null);
+    };
+    
+    const resetAuthForm = () => {
+        setAuthEmail('');
+        setAuthUsername('');
+        setAuthPassword('');
+        setAuthFullName('');
+        setAuthError('');
+    };
+    
+    const getAuthHeaders = () => {
+        return authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+    };
+
+    // Phase 4: Export interview report
+    const exportReport = async () => {
+        if (!sessionId) return;
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/export`, {
+                method: "POST"
+            });
+            const data = await response.json();
+            
+            // Download as JSON
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `interview-report-${sessionId.slice(0, 8)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error exporting report:", error);
+        }
     };
 
     const speakText = async (text) => {
@@ -275,6 +621,7 @@ const AudioRecorder = () => {
         setAudioBlob(null);
         setCurrentScore(null);
         setAverageScore(null);
+        setAllScores([]);
         setDifficultyTrend("stable");
         setElapsedTime(0);
         setRemainingTime(0);
@@ -285,6 +632,10 @@ const AudioRecorder = () => {
         setResumeText("");
         setResumeParsed(null);
         setJobDescription("");
+        // Phase 4: Reset analytics state
+        setShowAnalytics(false);
+        setAnalytics(null);
+        setQuestionFeedback(null);
     };
 
     const startRecording = async () => {
@@ -394,6 +745,7 @@ const AudioRecorder = () => {
             }
             if (data.score) {
                 setCurrentScore(data.score);
+                setAllScores(prev => [...prev, data.score]);
             }
             if (data.average_score) {
                 setAverageScore(data.average_score);
@@ -407,10 +759,135 @@ const AudioRecorder = () => {
         setIsProcessing(false);
     };
 
-    // Render summary view
+    // ============== AUTH MODAL COMPONENT ==============
+    const renderAuthModal = () => {
+        if (!showAuthModal) return null;
+        
+        return (
+            <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+                <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+                    <button className="modal-close" onClick={() => setShowAuthModal(false)}>×</button>
+                    <h2>{authMode === 'login' ? '🔐 Welcome Back!' : '🚀 Create Account'}</h2>
+                    
+                    <form onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
+                        {authMode === 'register' && (
+                            <div className="form-group">
+                                <label>Full Name</label>
+                                <input 
+                                    type="text" 
+                                    value={authFullName}
+                                    onChange={(e) => setAuthFullName(e.target.value)}
+                                    placeholder="Your Name"
+                                />
+                            </div>
+                        )}
+                        
+                        <div className="form-group">
+                            <label>Email</label>
+                            <input 
+                                type="email" 
+                                value={authEmail}
+                                onChange={(e) => setAuthEmail(e.target.value)}
+                                placeholder="your@email.com"
+                                required
+                            />
+                        </div>
+                        
+                        {authMode === 'register' && (
+                            <div className="form-group">
+                                <label>Username</label>
+                                <input 
+                                    type="text" 
+                                    value={authUsername}
+                                    onChange={(e) => setAuthUsername(e.target.value)}
+                                    placeholder="username (optional)"
+                                />
+                            </div>
+                        )}
+                        
+                        <div className="form-group">
+                            <label>Password</label>
+                            <input 
+                                type="password" 
+                                value={authPassword}
+                                onChange={(e) => setAuthPassword(e.target.value)}
+                                placeholder={authMode === 'register' ? 'Min 8 characters' : 'Your password'}
+                                required
+                            />
+                        </div>
+                        
+                        {authError && <div className="auth-error">{authError}</div>}
+                        
+                        <button type="submit" className="btn btn-primary auth-submit" disabled={isAuthLoading}>
+                            {isAuthLoading ? 'Please wait...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+                        </button>
+                    </form>
+                    
+                    <div className="auth-switch">
+                        {authMode === 'login' ? (
+                            <p>Don't have an account? <button onClick={() => { setAuthMode('register'); resetAuthForm(); }}>Sign Up</button></p>
+                        ) : (
+                            <p>Already have an account? <button onClick={() => { setAuthMode('login'); resetAuthForm(); }}>Sign In</button></p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+    
+    // ============== AUTH HEADER COMPONENT ==============
+    const renderAuthHeader = () => (
+        <div className="auth-header">
+            {!isOnline && (
+                <span className="offline-indicator">📵 Offline</span>
+            )}
+            {isAuthenticated ? (
+                <div className="user-info">
+                    <span className="user-greeting">👋 Hi, {user?.full_name || user?.username || 'User'}!</span>
+                    {userStats && (
+                        <span className="user-stats-mini">
+                            📊 {userStats.total_interviews || 0} interviews
+                        </span>
+                    )}
+                    <button className="btn btn-small btn-ghost" onClick={handleLogout}>Logout</button>
+                </div>
+            ) : (
+                <div className="auth-buttons">
+                    <button className="btn btn-small btn-ghost" onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}>
+                        Sign In
+                    </button>
+                    <button className="btn btn-small btn-primary" onClick={() => { setAuthMode('register'); setShowAuthModal(true); }}>
+                        Sign Up
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+    
+    // ============== NOTIFICATION COMPONENT ==============
+    const renderNotification = () => {
+        if (!notification) return null;
+        return (
+            <div className={`notification ${notification.type}`}>
+                <span className="notification-icon">
+                    {notification.type === 'success' && '✅'}
+                    {notification.type === 'error' && '❌'}
+                    {notification.type === 'warning' && '⚠️'}
+                    {notification.type === 'info' && 'ℹ️'}
+                </span>
+                <span className="notification-message">{notification.message}</span>
+                <button className="notification-close" onClick={() => setNotification(null)}>×</button>
+            </div>
+        );
+    };
+
+    // Render summary view with analytics
     if (showSummary && summary) {
         return (
             <div className="interview-container">
+                {renderNotification()}
+                {renderAuthHeader()}
+                {renderAuthModal()}
                 <div className="summary-card">
                     <h2>🎉 Interview Complete!</h2>
                     <div className="summary-header">
@@ -432,14 +909,197 @@ const AudioRecorder = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Phase 4: Score Chart */}
+                    {summary.scores && summary.scores.individual && summary.scores.individual.length > 0 && (
+                        <div className="score-chart">
+                            <h4>📈 Score Progression</h4>
+                            <div className="chart-bars">
+                                {summary.scores.individual.map((score, idx) => (
+                                    <div key={idx} className="chart-bar-container">
+                                        <div 
+                                            className={`chart-bar ${score >= 7 ? 'good' : score >= 5 ? 'ok' : 'poor'}`}
+                                            style={{ height: `${score * 10}%` }}
+                                        >
+                                            <span className="bar-value">{score}</span>
+                                        </div>
+                                        <span className="bar-label">Q{idx + 1}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Phase 4: Question Feedback Section */}
+                    <div className="feedback-section">
+                        <button 
+                            onClick={fetchQuestionFeedback}
+                            disabled={isLoadingFeedback}
+                            className="btn btn-secondary"
+                        >
+                            {isLoadingFeedback ? "⏳ Generating..." : "📝 Get Detailed Feedback"}
+                        </button>
+                        
+                        {questionFeedback && questionFeedback.questions && (
+                            <div className="question-feedback-list">
+                                <h4>Question-by-Question Analysis</h4>
+                                {questionFeedback.questions.map((q, idx) => (
+                                    <div key={idx} className={`feedback-item ${q.category}`}>
+                                        <div className="feedback-header">
+                                            <span className="q-number">Q{q.index}</span>
+                                            <span className={`q-score score-${q.category}`}>
+                                                {q.score}/10
+                                            </span>
+                                        </div>
+                                        <div className="feedback-question">
+                                            <strong>Question:</strong> {q.question}
+                                        </div>
+                                        <div className="feedback-answer">
+                                            <strong>Your Answer:</strong> {q.answer}
+                                        </div>
+                                        <div className="feedback-text">
+                                            <strong>💡 Feedback:</strong> {q.feedback}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     
                     <div className="summary-content">
                         <h3>📋 Performance Analysis</h3>
                         <pre className="summary-text">{summary.summary}</pre>
                     </div>
-                    <button onClick={resetInterview} className="btn btn-primary">
-                        🔄 Start New Interview
-                    </button>
+
+                    <div className="summary-actions">
+                        <button onClick={() => { fetchAiCoaching(); fetchImprovementPlan(); }} className="btn btn-secondary">
+                            🎯 Get AI Coaching
+                        </button>
+                        <button onClick={exportReport} className="btn btn-secondary">
+                            📥 Export Report
+                        </button>
+                        <button onClick={saveToHistory} className="btn btn-secondary">
+                            💾 Save to History
+                        </button>
+                        <button onClick={resetInterview} className="btn btn-primary">
+                            🔄 Start New Interview
+                        </button>
+                    </div>
+                    
+                    {/* AI Coaching Results */}
+                    {(aiCoaching || improvementPlan) && (
+                        <div className="ai-coaching-section">
+                            {isLoadingCoaching ? (
+                                <div className="coaching-loading">
+                                    <div className="spinner"></div>
+                                    <p>Generating personalized coaching...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {aiCoaching?.coaching && (
+                                        <div className="ai-coaching-card">
+                                            <h3>🤖 AI Coaching Feedback</h3>
+                                            
+                                            {aiCoaching.coaching.overall_grade && (
+                                                <div className="coaching-grade">
+                                                    Grade: <span className="grade-value">{aiCoaching.coaching.overall_grade}</span>
+                                                </div>
+                                            )}
+                                            
+                                            {aiCoaching.coaching.key_strengths && (
+                                                <div className="coaching-section">
+                                                    <h4>✅ Key Strengths</h4>
+                                                    <ul>
+                                                        {aiCoaching.coaching.key_strengths.map((s, i) => (
+                                                            <li key={i}>{s}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            {aiCoaching.coaching.critical_improvements && (
+                                                <div className="coaching-section">
+                                                    <h4>📈 Critical Improvements</h4>
+                                                    <ul>
+                                                        {aiCoaching.coaching.critical_improvements.map((s, i) => (
+                                                            <li key={i}>{s}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            {aiCoaching.coaching.practice_exercises && (
+                                                <div className="coaching-section">
+                                                    <h4>🏋️ Practice Exercises</h4>
+                                                    <div className="exercises-list">
+                                                        {aiCoaching.coaching.practice_exercises.map((ex, i) => (
+                                                            <div key={i} className="exercise-item">
+                                                                <strong>{ex.exercise}</strong>
+                                                                <p>{ex.description}</p>
+                                                                {ex.duration && <span className="duration">⏱️ {ex.duration}</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {aiCoaching.coaching.motivational_note && (
+                                                <div className="motivational-note">
+                                                    💪 {aiCoaching.coaching.motivational_note}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    
+                                    {improvementPlan && (
+                                        <div className="improvement-plan-card">
+                                            <h3>📅 Your Improvement Plan</h3>
+                                            <p className="plan-duration">Estimated Duration: {improvementPlan.estimated_duration}</p>
+                                            
+                                            <div className="plan-timeline">
+                                                {improvementPlan.improvement_plan?.map((item, i) => (
+                                                    <div key={i} className="plan-week">
+                                                        <div className="week-header">
+                                                            <span className="week-label">Week {item.week}</span>
+                                                            <span className="week-focus">{item.focus}</span>
+                                                        </div>
+                                                        <div className="week-goal">{item.goal}</div>
+                                                        <ul className="week-activities">
+                                                            {item.activities.map((activity, j) => (
+                                                                <li key={j}>{activity}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="success-criteria">
+                                                <h4>🎯 Success Criteria</h4>
+                                                <div className="criteria-grid">
+                                                    <div className="criteria-item">
+                                                        <span className="label">Content Score</span>
+                                                        <span className="target">{improvementPlan.success_criteria?.content_score}</span>
+                                                    </div>
+                                                    <div className="criteria-item">
+                                                        <span className="label">Confidence</span>
+                                                        <span className="target">{improvementPlan.success_criteria?.confidence_score}</span>
+                                                    </div>
+                                                    <div className="criteria-item">
+                                                        <span className="label">Filler Words</span>
+                                                        <span className="target">{improvementPlan.success_criteria?.filler_ratio}</span>
+                                                    </div>
+                                                    <div className="criteria-item">
+                                                        <span className="label">STAR Method</span>
+                                                        <span className="target">{improvementPlan.success_criteria?.star_completeness}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -449,6 +1109,9 @@ const AudioRecorder = () => {
     if (!interviewStarted) {
         return (
             <div className="interview-container">
+                {renderNotification()}
+                {renderAuthHeader()}
+                {renderAuthModal()}
                 <div className="setup-card">
                     <h2>🎯 Setup Your Interview</h2>
                     
@@ -668,6 +1331,9 @@ const AudioRecorder = () => {
     // Render interview view
     return (
         <div className="interview-container">
+            {renderNotification()}
+            {renderAuthHeader()}
+            {renderAuthModal()}
             {/* Hidden audio element for TTS */}
             <audio ref={ttsAudioRef} style={{ display: 'none' }} />
             
@@ -702,11 +1368,175 @@ const AudioRecorder = () => {
                 </div>
                 <div className="header-actions">
                     {isSpeaking && <span className="speaking-indicator">🔊 Speaking...</span>}
+                    <button 
+                        onClick={() => { setShowCoaching(!showCoaching); if (!showCoaching) fetchLiveCoaching(); }}
+                        className={`btn btn-coaching ${showCoaching ? 'active' : ''}`}
+                    >
+                        🎯 Coach
+                    </button>
                     <button onClick={endInterview} className="btn btn-danger" disabled={isProcessing}>
                         End Interview
                     </button>
                 </div>
             </div>
+            
+            {/* Phase 6: Live Coaching Panel */}
+            {showCoaching && (
+                <div className="coaching-panel">
+                    <div className="coaching-header">
+                        <h3>🎯 Live Interview Coach</h3>
+                        <button className="close-btn" onClick={() => setShowCoaching(false)}>×</button>
+                    </div>
+                    
+                    {isLoadingCoaching ? (
+                        <div className="coaching-loading">
+                            <div className="spinner"></div>
+                            <p>Analyzing your performance...</p>
+                        </div>
+                    ) : liveCoaching ? (
+                        <div className="coaching-content">
+                            {/* Overall Status */}
+                            <div className={`coaching-status ${liveCoaching.overall_performance?.score >= 7 ? 'good' : liveCoaching.overall_performance?.score >= 5 ? 'ok' : 'needs-work'}`}>
+                                <span className="status-emoji">{liveCoaching.overall_performance?.emoji}</span>
+                                <div className="status-info">
+                                    <span className="status-score">{liveCoaching.overall_performance?.score}/10</span>
+                                    <span className="status-message">{liveCoaching.overall_performance?.message}</span>
+                                </div>
+                            </div>
+                            
+                            {/* Key Metrics */}
+                            <div className="coaching-metrics">
+                                <div className="metric">
+                                    <span className="metric-label">Confidence</span>
+                                    <div className="metric-bar">
+                                        <div className="metric-fill" style={{width: `${(liveCoaching.metrics?.confidence_score || 0) * 10}%`}}></div>
+                                    </div>
+                                    <span className="metric-value">{liveCoaching.metrics?.confidence_score}/10</span>
+                                </div>
+                                <div className="metric">
+                                    <span className="metric-label">Filler Words</span>
+                                    <div className="metric-bar">
+                                        <div className="metric-fill warning" style={{width: `${Math.min(100, (liveCoaching.metrics?.filler_ratio_percent || 0) * 5)}%`}}></div>
+                                    </div>
+                                    <span className="metric-value">{liveCoaching.metrics?.filler_ratio_percent}%</span>
+                                </div>
+                                <div className="metric">
+                                    <span className="metric-label">STAR Method</span>
+                                    <div className="metric-bar">
+                                        <div className="metric-fill" style={{width: `${liveCoaching.metrics?.star_completeness_percent || 0}%`}}></div>
+                                    </div>
+                                    <span className="metric-value">{liveCoaching.metrics?.star_completeness_percent}%</span>
+                                </div>
+                            </div>
+                            
+                            {/* Top Filler Words */}
+                            {liveCoaching.top_filler_words && liveCoaching.top_filler_words.length > 0 && (
+                                <div className="filler-words-section">
+                                    <h4>⚠️ Your Top Filler Words</h4>
+                                    <div className="filler-tags">
+                                        {liveCoaching.top_filler_words.map(([word, count], idx) => (
+                                            <span key={idx} className="filler-tag">"{word}" × {count}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Strengths & Improvements */}
+                            <div className="coaching-feedback">
+                                {liveCoaching.strengths?.length > 0 && (
+                                    <div className="feedback-section strengths">
+                                        <h4>✅ Strengths</h4>
+                                        <ul>
+                                            {liveCoaching.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                {liveCoaching.improvements?.length > 0 && (
+                                    <div className="feedback-section improvements">
+                                        <h4>📈 Areas to Improve</h4>
+                                        <ul>
+                                            {liveCoaching.improvements.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Quick Tips */}
+                            <div className="quick-tips">
+                                <h4>💡 Quick Tips</h4>
+                                {liveCoaching.quick_tips?.map((tip, i) => (
+                                    <div key={i} className="tip">{tip}</div>
+                                ))}
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="coaching-actions">
+                                <button onClick={fetchSpeechAnalysis} className="btn btn-secondary btn-small">
+                                    📊 Speech Analysis
+                                </button>
+                                <button onClick={fetchLiveCoaching} className="btn btn-secondary btn-small">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            
+                            {/* Speech Analysis Results */}
+                            {speechAnalysis && (
+                                <div className="speech-analysis-detail">
+                                    <h4>📊 Last Answer Analysis</h4>
+                                    <div className="analysis-grid">
+                                        <div className="analysis-item">
+                                            <span className="label">Words</span>
+                                            <span className="value">{speechAnalysis.speech_quality?.word_count}</span>
+                                        </div>
+                                        <div className="analysis-item">
+                                            <span className="label">Clarity</span>
+                                            <span className="value">{speechAnalysis.speech_quality?.clarity_score}/10</span>
+                                        </div>
+                                        <div className="analysis-item">
+                                            <span className="label">Confidence</span>
+                                            <span className="value">{speechAnalysis.speech_quality?.confidence_score}/10</span>
+                                        </div>
+                                        <div className="analysis-item">
+                                            <span className="label">STAR</span>
+                                            <span className="value">{speechAnalysis.star_analysis?.completeness_percent}%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* STAR Components */}
+                                    <div className="star-breakdown">
+                                        <div className={`star-component ${speechAnalysis.star_analysis?.detected_components?.situation ? 'found' : ''}`}>S</div>
+                                        <div className={`star-component ${speechAnalysis.star_analysis?.detected_components?.task ? 'found' : ''}`}>T</div>
+                                        <div className={`star-component ${speechAnalysis.star_analysis?.detected_components?.action ? 'found' : ''}`}>A</div>
+                                        <div className={`star-component ${speechAnalysis.star_analysis?.detected_components?.result ? 'found' : ''}`}>R</div>
+                                    </div>
+                                    
+                                    {/* Coaching Tips */}
+                                    {speechAnalysis.coaching_tips?.length > 0 && (
+                                        <div className="coaching-tips-list">
+                                            {speechAnalysis.coaching_tips.slice(0, 3).map((tip, i) => (
+                                                <div key={i} className={`coaching-tip ${tip.priority}`}>
+                                                    <span className="tip-icon">{tip.icon}</span>
+                                                    <div className="tip-content">
+                                                        <strong>{tip.title}</strong>
+                                                        <p>{tip.tip}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="coaching-empty">
+                            <p>Answer a few questions to receive coaching feedback.</p>
+                            <button onClick={fetchLiveCoaching} className="btn btn-primary">
+                                Get Coaching
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="chat-container">
                 {conversationHistory.map((msg, index) => (
