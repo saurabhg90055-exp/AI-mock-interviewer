@@ -1,15 +1,252 @@
+import React, { useState, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import AudioRecorder from './AudioRecorder';
+import { ThemeProvider } from './components/theme/ThemeProvider';
+import ConfettiCelebration, { useConfetti } from './components/effects/ConfettiCelebration';
+import SettingsPanel from './components/settings/SettingsPanel';
+import { useXPSystem, LevelProgressBar, XPGainPopup, AchievementUnlock } from './components/gamification/XPSystem';
+import Dashboard from './components/dashboard/Dashboard';
+import { useKeyboardShortcuts, KeyboardShortcutsHelp } from './hooks/useKeyboardShortcuts.jsx';
+import { Settings, BarChart2, Home, Trophy, Sparkles } from 'lucide-react';
 import './App.css';
+import './components/gamification/XPSystem.css';
+import './components/theme/ThemeProvider.css';
+
+function AppContent() {
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'interview', 'dashboard'
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('appSettings');
+    return saved ? JSON.parse(saved) : {
+      autoSubmit: true,
+      showHints: true,
+      showTimer: true,
+      keyboardShortcuts: true,
+      soundEffects: true,
+      textToSpeech: true,
+      volume: 80,
+      speechRate: 1,
+      showAvatar: true,
+      animations: true,
+      compactMode: false,
+      achievementAlerts: true,
+      streakReminders: true,
+      progressUpdates: true
+    };
+  });
+
+  // XP System
+  const {
+    totalXP,
+    stats,
+    levelInfo,
+    unlockedAchievements,
+    pendingXP,
+    newAchievement,
+    recordInterview,
+    clearPendingXP,
+    clearNewAchievement
+  } = useXPSystem();
+
+  // Confetti
+  const confetti = useConfetti();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    show_shortcuts: () => setShortcutsOpen(true),
+    cancel_action: () => {
+      setShortcutsOpen(false);
+      setSettingsOpen(false);
+    }
+  }, settings.keyboardShortcuts);
+
+  // Handle settings change
+  const handleSettingsChange = (newSettings) => {
+    setSettings(newSettings);
+    localStorage.setItem('appSettings', JSON.stringify(newSettings));
+  };
+
+  // Handle interview complete
+  const handleInterviewComplete = useCallback((score, difficulty, questionCount) => {
+    const xpGained = recordInterview(score, difficulty, questionCount);
+    
+    // Trigger confetti for good scores
+    if (score >= 70) {
+      confetti.celebrate();
+    }
+    
+    return xpGained;
+  }, [recordInterview, confetti]);
+
+  return (
+    <div className="app-container">
+      {/* Navigation Header */}
+      <header className="app-header">
+        <motion.div 
+          className="logo-section"
+          whileHover={{ scale: 1.02 }}
+        >
+          <Sparkles className="logo-icon" />
+          <span className="logo-text">AI Interviewer</span>
+        </motion.div>
+
+        <nav className="main-nav">
+          <button
+            className={`nav-btn ${currentView === 'home' ? 'active' : ''}`}
+            onClick={() => setCurrentView('home')}
+          >
+            <Home size={18} />
+            <span>Home</span>
+          </button>
+          <button
+            className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setCurrentView('dashboard')}
+          >
+            <BarChart2 size={18} />
+            <span>Dashboard</span>
+          </button>
+          <button
+            className={`nav-btn ${currentView === 'achievements' ? 'active' : ''}`}
+            onClick={() => setCurrentView('achievements')}
+          >
+            <Trophy size={18} />
+            <span>Achievements</span>
+          </button>
+        </nav>
+
+        <div className="header-actions">
+          {/* Level Progress Mini */}
+          <div className="mini-level">
+            <span className="level-badge">Lvl {levelInfo.level}</span>
+            <div className="mini-progress">
+              <div 
+                className="mini-progress-fill" 
+                style={{ width: `${levelInfo.progress}%` }}
+              />
+            </div>
+          </div>
+
+          <button
+            className="settings-btn"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="app-main">
+        <AnimatePresence mode="wait">
+          {currentView === 'home' && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="home-view"
+            >
+              <div className="welcome-section">
+                <h1 className="main-title">
+                  <span className="gradient-text">Master Your</span>
+                  <br />
+                  <span className="highlight-text">Technical Interviews</span>
+                </h1>
+                <p className="main-subtitle">
+                  Practice with AI-powered mock interviews and get instant feedback
+                </p>
+              </div>
+              <AudioRecorder 
+                settings={settings}
+                onInterviewComplete={handleInterviewComplete}
+              />
+            </motion.div>
+          )}
+
+          {currentView === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Dashboard
+                stats={stats}
+                totalXP={totalXP}
+                unlockedAchievements={unlockedAchievements}
+                interviewHistory={JSON.parse(localStorage.getItem('interviewHistory') || '[]')}
+              />
+            </motion.div>
+          )}
+
+          {currentView === 'achievements' && (
+            <motion.div
+              key="achievements"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="achievements-view"
+            >
+              <div className="achievements-header">
+                <h2>Your Achievements</h2>
+                <p>Unlock achievements by practicing interviews</p>
+              </div>
+              <div className="achievements-content">
+                <LevelProgressBar totalXP={totalXP} showDetails={true} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* XP Gain Popup */}
+      <AnimatePresence>
+        {pendingXP && settings.progressUpdates && (
+          <XPGainPopup xpGained={pendingXP} onComplete={clearPendingXP} />
+        )}
+      </AnimatePresence>
+
+      {/* Achievement Unlock */}
+      <AnimatePresence>
+        {newAchievement && settings.achievementAlerts && (
+          <AchievementUnlock 
+            achievement={newAchievement} 
+            onClose={clearNewAchievement}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Confetti Celebration */}
+      <ConfettiCelebration
+        trigger={confetti.trigger}
+        originX={confetti.originX}
+        originY={confetti.originY}
+        onComplete={confetti.reset}
+      />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onSettingsChange={handleSettingsChange}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
+    </div>
+  );
+}
 
 function App() {
   return (
-    <div className="App">
-      <h1>🎯 AI Mock Interviewer</h1>
-      <p style={{ color: '#a0aec0', marginBottom: '2rem' }}>
-        Practice technical interviews with AI-powered feedback
-      </p>
-      <AudioRecorder />
-    </div>
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

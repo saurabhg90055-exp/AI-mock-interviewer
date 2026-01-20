@@ -1,0 +1,338 @@
+/* AI Avatar Styles */
+
+.ai-avatar-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-avatar-wrapper.size-small {
+  width: 80px;
+  height: 80px;
+}
+
+.ai-avatar-wrapper.size-medium {
+  width: 120px;
+  height: 120px;
+}
+
+.ai-avatar-wrapper.size-large {
+  width: 180px;
+  height: 180px;
+}
+
+/* Glow effect behind avatar */
+.avatar-glow {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  filter: blur(20px);
+  z-index: 0;
+}
+
+/* Main container */
+.ai-avatar-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Avatar head */
+.avatar-head {
+  position: relative;
+  width: 85%;
+  height: 85%;
+  background: linear-gradient(145deg, #2d3748, #1a202c);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    inset 0 -5px 20px rgba(0, 0, 0, 0.3),
+    inset 0 5px 20px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+/* Animated rings */
+.avatar-rings {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.ring-1 {
+  width: 110%;
+  height: 110%;
+}
+
+.ring-2 {
+  width: 130%;
+  height: 130%;
+}
+
+.ring-3 {
+  width: 150%;
+  height: 150%;
+}
+
+/* Face container */
+.avatar-face {
+  position: relative;
+  width: 70%;
+  height: 70%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Eyes */
+.eyes-container {
+  display: flex;
+  gap: 25px;
+  margin-bottom: 10px;
+}
+
+.eye {
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(180deg, #fff 0%, #e2e8f0 100%);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pupil {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.eye-shine {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: white;
+  border-radius: 50%;
+  top: 5px;
+  left: 5px;
+}
+
+/* Eyebrows */
+.eyebrows-container {
+  position: absolute;
+  top: 15%;
+  width: 80%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.eyebrow {
+  width: 20px;
+  height: 4px;
+  background: linear-gradient(90deg, #4a5568, #2d3748);
+  border-radius: 2px;
+}
+
+.left-eyebrow {
+  transform-origin: right center;
+}
+
+.right-eyebrow {
+  transform-origin: left center;
+}
+
+/* Mouth */
+.mouth {
+  width: 30px;
+  height: 8px;
+  background: linear-gradient(180deg, #c53030 0%, #9b2c2c 100%);
+  border-radius: 40%;
+  margin-top: 5px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Speaking waves */
+.speaking-waves {
+  position: absolute;
+  bottom: -30px;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 40px;
+}
+
+.wave-bar {
+  width: 4px;
+  background: linear-gradient(180deg, #667eea, #764ba2);
+  border-radius: 2px;
+  min-height: 4px;
+}
+
+/* Thinking dots */
+.thinking-dots {
+  position: absolute;
+  bottom: -25px;
+  display: flex;
+  gap: 6px;
+}
+
+.thinking-dot {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  border-radius: 50%;
+}
+
+/* Listening indicator */
+.listening-indicator {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.listening-circle {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: rgba(72, 187, 120, 0.3);
+  border-radius: 50%;
+}
+
+.listening-icon {
+  font-size: 20px;
+  z-index: 1;
+}
+
+/* Status label */
+.avatar-status {
+  position: absolute;
+  bottom: -35px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+  background: rgba(26, 32, 44, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-speaking {
+  color: #667eea;
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.status-listening {
+  color: #48bb78;
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+.status-thinking {
+  color: #ed8936;
+  border-color: rgba(237, 137, 54, 0.3);
+}
+
+.status-happy {
+  color: #48bb78;
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+.status-concerned {
+  color: #f56565;
+  border-color: rgba(245, 101, 101, 0.3);
+}
+
+.status-idle {
+  color: #a0aec0;
+}
+
+/* Audio level ring */
+.audio-level-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.audio-level-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+/* Size-specific adjustments */
+.size-small .eyes-container {
+  gap: 12px;
+}
+
+.size-small .eye {
+  width: 12px;
+  height: 12px;
+}
+
+.size-small .pupil {
+  width: 6px;
+  height: 6px;
+}
+
+.size-small .eye-shine {
+  width: 3px;
+  height: 3px;
+}
+
+.size-small .mouth {
+  width: 16px;
+  height: 5px;
+}
+
+.size-small .avatar-status {
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  bottom: -25px;
+}
+
+.size-small .speaking-waves {
+  bottom: -20px;
+}
+
+.size-small .wave-bar {
+  width: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ai-avatar-wrapper.size-large {
+    width: 140px;
+    height: 140px;
+  }
+}

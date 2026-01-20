@@ -1,0 +1,161 @@
+/* Record Button Styles */
+
+.record-button-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Pulse rings */
+.pulse-ring {
+  position: absolute;
+  border: 2px solid;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Audio level ring */
+.level-ring {
+  position: absolute;
+  pointer-events: none;
+}
+
+.level-ring circle {
+  transform-origin: center;
+}
+
+/* Main button */
+.record-button {
+  position: relative;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  z-index: 2;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.record-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.record-button:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+/* Inner glow effect */
+.inner-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+/* Button icon */
+.button-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spinner for processing state */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+}
+
+.size-small .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.size-large .spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 4px;
+}
+
+/* Recording indicator dot */
+.rec-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+}
+
+.size-small .rec-indicator {
+  width: 6px;
+  height: 6px;
+  top: 5px;
+  right: 5px;
+}
+
+.size-large .rec-indicator {
+  width: 12px;
+  height: 12px;
+  top: 10px;
+  right: 10px;
+}
+
+/* Label */
+.button-label {
+  font-size: 0.875rem;
+  color: #a0aec0;
+  font-weight: 500;
+  text-align: center;
+}
+
+.size-small .button-label {
+  font-size: 0.75rem;
+}
+
+.size-large .button-label {
+  font-size: 1rem;
+}
+
+/* Recording state colors */
+.record-button.recording {
+  background: linear-gradient(135deg, #f56565, #c53030);
+}
+
+.record-button:not(.recording) {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+}
+
+/* Hover effects */
+.record-button:not(:disabled):not(.recording):hover {
+  box-shadow: 0 0 30px rgba(72, 187, 120, 0.5);
+}
+
+.record-button:not(:disabled).recording:hover {
+  box-shadow: 0 0 30px rgba(245, 101, 101, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .record-button-wrapper.size-large {
+    --button-size: 70px;
+  }
+  
+  .size-large .record-button {
+    width: 70px !important;
+    height: 70px !important;
+  }
+}

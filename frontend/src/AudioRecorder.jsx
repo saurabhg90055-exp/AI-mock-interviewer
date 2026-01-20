@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+// New enhanced components
+import { AIAvatar } from "./components/avatar";
+import { AudioVisualizer } from "./components/audio";
+import { RecordButton, Toast, ScoreDisplay, ScoreBadge, TypingIndicator } from "./components/ui";
+import soundEffects from "./utils/soundEffects";
 
 // API URL - use environment variable or default to localhost
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-const AudioRecorder = () => {
+const AudioRecorder = ({ settings = {}, onInterviewComplete }) => {
     // Auth state (Phase 5)
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
@@ -89,6 +96,11 @@ const AudioRecorder = () => {
     // Setup step state
     const [setupStep, setSetupStep] = useState(1); // 1: basics, 2: resume/JD, 3: confirm
     
+    // Phase 8: Enhanced UI state
+    const [avatarState, setAvatarState] = useState('idle'); // 'idle' | 'speaking' | 'listening' | 'thinking' | 'happy' | 'concerned'
+    const [soundEnabled, setSoundEnabled] = useState(settings?.soundEffects ?? true);
+    const [visualizerMode, setVisualizerMode] = useState('bars'); // 'bars' | 'wave' | 'circular' | 'orb'
+    
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]);
     const chatEndRef = useRef(null);
@@ -97,6 +109,13 @@ const AudioRecorder = () => {
     const recordingTimerRef = useRef(null);
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
+
+    // Update sound enabled when settings change
+    useEffect(() => {
+        if (settings?.soundEffects !== undefined) {
+            setSoundEnabled(settings.soundEffects);
+        }
+    }, [settings?.soundEffects]);
 
     // Notification helper
     const showNotification = useCallback((message, type = 'info', duration = 4000) => {
@@ -181,30 +200,57 @@ const AudioRecorder = () => {
     const fetchTopics = async () => {
         try {
             const response = await fetch(`${API_URL}/topics`);
+            if (!response.ok) throw new Error('Failed to fetch topics');
             const data = await response.json();
             setTopics(data.topics);
         } catch (error) {
             console.error("Error fetching topics:", error);
+            // Fallback topics when backend is unavailable
+            setTopics([
+                { id: 'general', name: 'General Technical' },
+                { id: 'dsa', name: 'Data Structures & Algorithms' },
+                { id: 'system_design', name: 'System Design' },
+                { id: 'behavioral', name: 'Behavioral Interview' },
+                { id: 'frontend', name: 'Frontend Development' },
+                { id: 'backend', name: 'Backend Development' }
+            ]);
         }
     };
 
     const fetchCompanies = async () => {
         try {
             const response = await fetch(`${API_URL}/companies`);
+            if (!response.ok) throw new Error('Failed to fetch companies');
             const data = await response.json();
             setCompanies(data.companies);
         } catch (error) {
             console.error("Error fetching companies:", error);
+            // Fallback companies when backend is unavailable
+            setCompanies([
+                { id: 'default', name: 'Standard Interview' },
+                { id: 'google', name: 'Google Style' },
+                { id: 'amazon', name: 'Amazon Style' },
+                { id: 'meta', name: 'Meta Style' },
+                { id: 'microsoft', name: 'Microsoft Style' },
+                { id: 'startup', name: 'Startup Style' }
+            ]);
         }
     };
 
     const fetchDifficulties = async () => {
         try {
             const response = await fetch(`${API_URL}/difficulties`);
+            if (!response.ok) throw new Error('Failed to fetch difficulties');
             const data = await response.json();
             setDifficulties(data.difficulties);
         } catch (error) {
             console.error("Error fetching difficulties:", error);
+            // Fallback difficulties when backend is unavailable
+            setDifficulties([
+                { id: 'easy', name: 'Easy', description: 'Entry-level questions' },
+                { id: 'medium', name: 'Medium', description: 'Standard interview' },
+                { id: 'hard', name: 'Hard', description: 'Senior-level questions' }
+            ]);
         }
     };
 
@@ -530,6 +576,10 @@ const AudioRecorder = () => {
         // Use Web Speech API (browser built-in TTS - free & reliable)
         if ('speechSynthesis' in window) {
             setIsSpeaking(true);
+            setAvatarState('speaking');
+            
+            // Play sound effect
+            if (soundEnabled) soundEffects.play('aiSpeaking');
             
             // Cancel any ongoing speech
             window.speechSynthesis.cancel();
@@ -549,8 +599,14 @@ const AudioRecorder = () => {
                 utterance.voice = englishVoice;
             }
             
-            utterance.onend = () => setIsSpeaking(false);
-            utterance.onerror = () => setIsSpeaking(false);
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                setAvatarState('idle');
+            };
+            utterance.onerror = () => {
+                setIsSpeaking(false);
+                setAvatarState('idle');
+            };
             
             window.speechSynthesis.speak(utterance);
         }
@@ -558,6 +614,11 @@ const AudioRecorder = () => {
 
     const startInterview = async () => {
         setIsProcessing(true);
+        setAvatarState('thinking');
+        
+        // Play session start sound
+        if (soundEnabled) soundEffects.play('sessionStart');
+        
         try {
             const response = await fetch(`${API_URL}/interview/start`, {
                 method: "POST",
@@ -579,6 +640,7 @@ const AudioRecorder = () => {
             setConversationHistory([{ role: "assistant", content: data.opening_message }]);
             setQuestionCount(1);
             setRemainingTime(selectedDuration * 60);
+            setAvatarState('idle');
             
             // Speak the opening message
             if (enableTTS) {
@@ -586,6 +648,8 @@ const AudioRecorder = () => {
             }
         } catch (error) {
             console.error("Error starting interview:", error);
+            setAvatarState('idle');
+            if (soundEnabled) soundEffects.play('error');
         }
         setIsProcessing(false);
     };
@@ -594,6 +658,10 @@ const AudioRecorder = () => {
         if (!sessionId) return;
         
         setIsProcessing(true);
+        
+        // Play session end sound
+        if (soundEnabled) soundEffects.play('sessionEnd');
+        
         try {
             const response = await fetch(`${API_URL}/interview/${sessionId}/end`, {
                 method: "POST"
@@ -604,6 +672,23 @@ const AudioRecorder = () => {
             setShowSummary(true);
             setInterviewStarted(false);
             setSessionId(null);
+            setAvatarState('happy');
+            
+            // Notify parent component about interview completion for XP tracking
+            if (onInterviewComplete && data.score !== undefined) {
+                onInterviewComplete(data.score, selectedDifficulty, questionCount);
+            }
+            
+            // Save to interview history
+            const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+            history.unshift({
+                date: new Date().toISOString(),
+                topic: selectedTopic,
+                difficulty: selectedDifficulty,
+                score: data.score || averageScore || 0,
+                questionCount: questionCount
+            });
+            localStorage.setItem('interviewHistory', JSON.stringify(history.slice(0, 50))); // Keep last 50
         } catch (error) {
             console.error("Error ending interview:", error);
         }
@@ -636,10 +721,15 @@ const AudioRecorder = () => {
         setShowAnalytics(false);
         setAnalytics(null);
         setQuestionFeedback(null);
+        // Phase 8: Reset UI state
+        setAvatarState('idle');
     };
 
     const startRecording = async () => {
         try {
+            // Play start recording sound
+            if (soundEnabled) soundEffects.play('startRecording');
+            
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             // Set up audio visualization
@@ -678,11 +768,14 @@ const AudioRecorder = () => {
                 if (audioContextRef.current) {
                     audioContextRef.current.close();
                 }
+                // Play stop recording sound
+                if (soundEnabled) soundEffects.play('stopRecording');
                 // Auto-send after recording stops
                 analyzeAudioBlob(blob);
             };
 
             mediaRecorderRef.current.start();
+            setAvatarState('listening');
             setIsRecording(true);
             
             // Start visualization after recording starts
@@ -697,6 +790,7 @@ const AudioRecorder = () => {
             });
         } catch (error) {
             console.error("Error accessing microphone:", error);
+            if (soundEnabled) soundEffects.play('error');
         }
     };
 
@@ -704,6 +798,7 @@ const AudioRecorder = () => {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
+            setAvatarState('thinking');
             mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
         }
     };
@@ -712,6 +807,11 @@ const AudioRecorder = () => {
         if (!blob || !sessionId) return;
 
         setIsProcessing(true);
+        setAvatarState('thinking');
+        
+        // Play thinking sound
+        if (soundEnabled) soundEffects.play('aiThinking');
+        
         const formData = new FormData();
         formData.append("file", blob, "audio.webm");
 
@@ -746,6 +846,17 @@ const AudioRecorder = () => {
             if (data.score) {
                 setCurrentScore(data.score);
                 setAllScores(prev => [...prev, data.score]);
+                
+                // Play appropriate sound based on score
+                if (soundEnabled) {
+                    if (data.score >= 7) {
+                        soundEffects.play('goodScore');
+                        setAvatarState('happy');
+                    } else if (data.score < 5) {
+                        soundEffects.play('badScore');
+                        setAvatarState('concerned');
+                    }
+                }
             }
             if (data.average_score) {
                 setAverageScore(data.average_score);
@@ -755,6 +866,8 @@ const AudioRecorder = () => {
             }
         } catch (error) {
             console.error("Error sending audio:", error);
+            if (soundEnabled) soundEffects.play('error');
+            setAvatarState('idle');
         }
         setIsProcessing(false);
     };
@@ -1338,7 +1451,11 @@ const AudioRecorder = () => {
             <audio ref={ttsAudioRef} style={{ display: 'none' }} />
             
             {/* Interview Timer Bar */}
-            <div className={`timer-bar ${isTimeWarning ? 'warning' : ''} ${isTimeUp ? 'time-up' : ''}`}>
+            <motion.div 
+                className={`timer-bar ${isTimeWarning ? 'warning' : ''} ${isTimeUp ? 'time-up' : ''}`}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+            >
                 <div className="timer-info">
                     <span className="timer-elapsed">⏱️ {formatTime(elapsedTime)}</span>
                     <span className="timer-remaining">
@@ -1346,28 +1463,40 @@ const AudioRecorder = () => {
                     </span>
                 </div>
                 <div className="timer-progress">
-                    <div 
+                    <motion.div 
                         className="timer-progress-bar" 
-                        style={{ width: `${Math.min(100, (elapsedTime / (selectedDuration * 60)) * 100)}%` }}
-                    ></div>
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, (elapsedTime / (selectedDuration * 60)) * 100)}%` }}
+                        transition={{ duration: 0.5 }}
+                    />
                 </div>
-            </div>
+            </motion.div>
             
             <div className="interview-header">
                 <div className="header-info">
-                    <span className="topic-badge">{selectedTopic.toUpperCase()}</span>
+                    <motion.span 
+                        className="topic-badge"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 500 }}
+                    >
+                        {selectedTopic.toUpperCase()}
+                    </motion.span>
                     <span className="company-badge">{selectedCompany.toUpperCase()}</span>
                     <span className="question-count">Q#{questionCount}</span>
                     {averageScore && (
-                        <span className="score-badge">
-                            ⭐ {averageScore}/10
-                            {difficultyTrend === 'harder' && ' 📈'}
-                            {difficultyTrend === 'easier' && ' 📉'}
-                        </span>
+                        <ScoreBadge score={averageScore} maxScore={10} />
                     )}
                 </div>
                 <div className="header-actions">
                     {isSpeaking && <span className="speaking-indicator">🔊 Speaking...</span>}
+                    <button 
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        className={`btn btn-small btn-ghost ${soundEnabled ? '' : 'muted'}`}
+                        title={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
+                    >
+                        {soundEnabled ? '🔊' : '🔇'}
+                    </button>
                     <button 
                         onClick={() => { setShowCoaching(!showCoaching); if (!showCoaching) fetchLiveCoaching(); }}
                         className={`btn btn-coaching ${showCoaching ? 'active' : ''}`}
@@ -1380,9 +1509,39 @@ const AudioRecorder = () => {
                 </div>
             </div>
             
+            {/* AI Avatar Section */}
+            <motion.div 
+                className="ai-avatar-section"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+            >
+                <AIAvatar 
+                    state={avatarState}
+                    audioLevel={audioLevel}
+                    score={currentScore}
+                    size="large"
+                />
+                {isSpeaking && (
+                    <AudioVisualizer 
+                        mode="circular"
+                        isActive={true}
+                        audioLevel={0.5 + Math.random() * 0.3}
+                        color="primary"
+                        size="medium"
+                    />
+                )}
+            </motion.div>
+            
             {/* Phase 6: Live Coaching Panel */}
+            <AnimatePresence>
             {showCoaching && (
-                <div className="coaching-panel">
+                <motion.div 
+                    className="coaching-panel"
+                    initial={{ opacity: 0, x: 300 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 300 }}
+                >
                     <div className="coaching-header">
                         <h3>🎯 Live Interview Coach</h3>
                         <button className="close-btn" onClick={() => setShowCoaching(false)}>×</button>
@@ -1535,8 +1694,9 @@ const AudioRecorder = () => {
                             </button>
                         </div>
                     )}
-                </div>
+                </motion.div>
             )}
+            </AnimatePresence>
 
             <div className="chat-container">
                 {conversationHistory.map((msg, index) => (
@@ -1572,50 +1732,90 @@ const AudioRecorder = () => {
                 <div ref={chatEndRef} />
             </div>
 
-            <div className="recording-controls">
-                {isRecording && (
-                    <div className="recording-visualizer">
-                        <div className="recording-timer">
-                            <span className="rec-dot"></span>
-                            REC {formatTime(recordingTime)}
-                        </div>
-                        <div className="audio-visualizer">
-                            {[...Array(20)].map((_, i) => (
-                                <div 
-                                    key={i} 
-                                    className="visualizer-bar"
-                                    style={{ 
-                                        height: `${Math.max(4, audioLevel * 100 * (0.5 + Math.random() * 0.5))}%`,
-                                        animationDelay: `${i * 0.05}s`
-                                    }}
-                                ></div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+            <motion.div 
+                className="recording-controls"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+            >
+                {/* Enhanced Audio Visualizer */}
+                <AnimatePresence>
+                    {isRecording && (
+                        <motion.div 
+                            className="recording-visualizer-enhanced"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                        >
+                            <div className="recording-timer">
+                                <motion.span 
+                                    className="rec-dot"
+                                    animate={{ opacity: [1, 0.3, 1] }}
+                                    transition={{ duration: 1, repeat: Infinity }}
+                                />
+                                REC {formatTime(recordingTime)}
+                            </div>
+                            <AudioVisualizer 
+                                mode={visualizerMode}
+                                isActive={isRecording}
+                                audioLevel={audioLevel}
+                                color="danger"
+                                size="medium"
+                            />
+                            <div className="visualizer-mode-selector">
+                                {['bars', 'wave', 'circular', 'orb'].map(mode => (
+                                    <button
+                                        key={mode}
+                                        className={`mode-btn ${visualizerMode === mode ? 'active' : ''}`}
+                                        onClick={() => setVisualizerMode(mode)}
+                                    >
+                                        {mode === 'bars' && '📊'}
+                                        {mode === 'wave' && '〰️'}
+                                        {mode === 'circular' && '⭕'}
+                                        {mode === 'orb' && '🔮'}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 
-                {!isRecording ? (
-                    <button 
-                        onClick={startRecording} 
-                        disabled={isProcessing || isSpeaking}
-                        className="btn btn-record"
-                    >
-                        🎤 {isSpeaking ? "Wait for AI..." : "Hold to Answer"}
-                    </button>
-                ) : (
-                    <button 
-                        onClick={stopRecording} 
-                        className="btn btn-recording"
-                    >
-                        <span className="recording-pulse"></span>
-                        🛑 Stop Recording
-                    </button>
-                )}
+                {/* Enhanced Record Button */}
+                <RecordButton
+                    isRecording={isRecording}
+                    isProcessing={isProcessing}
+                    isDisabled={isSpeaking}
+                    audioLevel={audioLevel}
+                    onStart={startRecording}
+                    onStop={stopRecording}
+                    size="large"
+                    showLevel={true}
+                    label={true}
+                />
+                
+                {/* Processing Indicator */}
+                <AnimatePresence>
+                    {isProcessing && !isRecording && (
+                        <motion.div 
+                            className="processing-indicator"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            <TypingIndicator variant="wave" color="primary" text="AI is thinking..." />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 
                 {audioURL && !isProcessing && !isRecording && (
-                    <audio src={audioURL} controls className="audio-playback" />
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <audio src={audioURL} controls className="audio-playback" />
+                    </motion.div>
                 )}
-            </div>
+            </motion.div>
         </div>
     );
 };

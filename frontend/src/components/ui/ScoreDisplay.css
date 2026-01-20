@@ -1,0 +1,118 @@
+/* Score Display Styles */
+
+.score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-circle-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-circle-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+.score-value-container {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.score-value {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score-max {
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.score-emoji {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 1.2em;
+}
+
+.size-small .score-emoji {
+  font-size: 0.9em;
+  top: -3px;
+  right: -3px;
+}
+
+.size-large .score-emoji {
+  font-size: 1.5em;
+  top: -8px;
+  right: -8px;
+}
+
+/* Label */
+.score-label-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-label {
+  color: #a0aec0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-trend {
+  font-size: 1em;
+}
+
+/* Score Badge Styles */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.badge-size-small {
+  padding: 2px 8px;
+  font-size: 0.7rem;
+}
+
+.badge-size-large {
+  padding: 6px 14px;
+  font-size: 0.9rem;
+}
+
+.badge-good {
+  background: linear-gradient(135deg, rgba(72, 187, 120, 0.2), rgba(56, 161, 105, 0.2));
+  color: #48bb78;
+  border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.badge-ok {
+  background: linear-gradient(135deg, rgba(236, 201, 75, 0.2), rgba(214, 158, 46, 0.2));
+  color: #ecc94b;
+  border: 1px solid rgba(236, 201, 75, 0.3);
+}
+
+.badge-poor {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.2), rgba(197, 48, 48, 0.2));
+  color: #f56565;
+  border: 1px solid rgba(245, 101, 101, 0.3);
+}
+
+/* Glow effect for high scores */
+.badge-good {
+  box-shadow: 0 0 15px rgba(72, 187, 120, 0.2);
+}
