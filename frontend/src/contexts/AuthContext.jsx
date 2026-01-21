@@ -63,6 +63,25 @@ export const AuthProvider = ({ children }) => {
             const data = await userAPI.getDashboard();
             if (data) {
                 setDashboardData(data);
+                
+                // Sync server data DOWN to localStorage for consistency
+                if (data.xp && data.xp.total_xp !== undefined) {
+                    const localXP = parseInt(localStorage.getItem('userXP') || '0', 10);
+                    // Take the higher value to preserve progress
+                    const mergedXP = Math.max(localXP, data.xp.total_xp);
+                    localStorage.setItem('userXP', mergedXP.toString());
+                }
+                
+                // Merge achievements
+                if (data.achievements && data.achievements.unlocked) {
+                    try {
+                        const localAch = new Set(JSON.parse(localStorage.getItem('unlockedAchievements') || '[]'));
+                        data.achievements.unlocked.forEach(id => localAch.add(id));
+                        localStorage.setItem('unlockedAchievements', JSON.stringify([...localAch]));
+                    } catch (e) {
+                        console.warn('Failed to merge achievements:', e);
+                    }
+                }
             }
         } catch (error) {
             console.error('Failed to fetch dashboard:', error);
@@ -100,6 +119,20 @@ export const AuthProvider = ({ children }) => {
         if (result.success) {
             setUser(result.data.user);
             setIsAuthenticated(true);
+            
+            // Sync local guest data UP to server
+            try {
+                const localXP = parseInt(localStorage.getItem('userXP') || '0', 10);
+                const localAchievements = JSON.parse(localStorage.getItem('unlockedAchievements') || '[]');
+                const localStats = JSON.parse(localStorage.getItem('userStats') || '{}');
+                
+                if (localXP > 0 || localAchievements.length > 0) {
+                    await userAPI.syncUserData(localXP, localAchievements, localStats);
+                }
+            } catch (error) {
+                console.error('Failed to sync local data on login:', error);
+            }
+            
             await Promise.all([fetchDashboard(), fetchSettings()]);
             // Dispatch event so AudioRecorder syncs auth state
             window.dispatchEvent(new CustomEvent('auth:login'));
@@ -112,6 +145,20 @@ export const AuthProvider = ({ children }) => {
         if (result.success) {
             setUser(result.data.user);
             setIsAuthenticated(true);
+            
+            // Sync local guest data UP to server for new account
+            try {
+                const localXP = parseInt(localStorage.getItem('userXP') || '0', 10);
+                const localAchievements = JSON.parse(localStorage.getItem('unlockedAchievements') || '[]');
+                const localStats = JSON.parse(localStorage.getItem('userStats') || '{}');
+                
+                if (localXP > 0 || localAchievements.length > 0) {
+                    await userAPI.syncUserData(localXP, localAchievements, localStats);
+                }
+            } catch (error) {
+                console.error('Failed to sync local data on register:', error);
+            }
+            
             await Promise.all([fetchDashboard(), fetchSettings()]);
             // Dispatch event so AudioRecorder syncs auth state
             window.dispatchEvent(new CustomEvent('auth:login'));

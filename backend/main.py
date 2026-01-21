@@ -1782,6 +1782,79 @@ async def get_user_achievements(
     }
 
 
+class UserSyncData(BaseModel):
+    total_xp: int = 0
+    achievements: List[str] = []
+    stats: Optional[dict] = None
+
+
+@app.post("/user/sync")
+async def sync_user_data(
+    data: UserSyncData,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync local guest data with user's server profile.
+    Called after login/register to merge any progress made as guest.
+    Uses MAX strategy to prevent data loss while avoiding inflation.
+    """
+    
+    # Get or create user XP record
+    user_xp = db.query(UserXP).filter(UserXP.user_id == current_user.id).first()
+    if not user_xp:
+        user_xp = UserXP(user_id=current_user.id, total_xp=0)
+        db.add(user_xp)
+        db.flush()
+    
+    # Sync XP: Take the maximum to preserve progress without inflation
+    xp_before = user_xp.total_xp
+    if data.total_xp > 0:
+        user_xp.total_xp = max(user_xp.total_xp, data.total_xp)
+    
+    # Sync stats if provided
+    if data.stats:
+        if data.stats.get('totalInterviews', 0) > user_xp.total_interviews:
+            user_xp.total_interviews = data.stats['totalInterviews']
+        if data.stats.get('perfectScores', 0) > user_xp.perfect_scores:
+            user_xp.perfect_scores = data.stats['perfectScores']
+        if data.stats.get('streak', 0) > user_xp.current_streak:
+            user_xp.current_streak = data.stats['streak']
+        if data.stats.get('streak', 0) > user_xp.longest_streak:
+            user_xp.longest_streak = data.stats['streak']
+    
+    # Sync Achievements: Add any new ones
+    current_achievements = db.query(UserAchievement).filter(
+        UserAchievement.user_id == current_user.id
+    ).all()
+    current_ids = {a.achievement_id for a in current_achievements}
+    
+    added_achievements = []
+    for ach_id in data.achievements:
+        if ach_id not in current_ids:
+            # Verify achievement exists in our definitions
+            ach_def = next((a for a in ACHIEVEMENTS if a["id"] == ach_id), None)
+            if ach_def:
+                new_ach = UserAchievement(
+                    user_id=current_user.id,
+                    achievement_id=ach_id,
+                    unlocked_at=datetime.utcnow()
+                )
+                db.add(new_ach)
+                added_achievements.append(ach_id)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "xp_before": xp_before,
+        "xp_after": user_xp.total_xp,
+        "xp_synced": user_xp.total_xp - xp_before,
+        "achievements_added": added_achievements,
+        "total_achievements": len(current_ids) + len(added_achievements)
+    }
+
+
 @app.get("/user/dashboard")
 async def get_user_dashboard(
     current_user: User = Depends(get_current_user_required),

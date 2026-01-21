@@ -57,8 +57,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                     onClose();
                     toast.success('Welcome back! 🎉');
                 } else {
-                    setError(result.error);
-                    toast.error(result.error);
+                    const errorMsg = result.error || 'Login failed. Please check your credentials.';
+                    setError(errorMsg);
+                    toast.error(errorMsg);
                 }
             } else {
                 // Validation
@@ -80,11 +81,13 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                     onClose();
                     toast.success('Account created! Welcome aboard! 🚀');
                 } else {
-                    setError(result.error);
-                    toast.error(result.error);
+                    const errorMsg = result.error || 'Registration failed. Please try again.';
+                    setError(errorMsg);
+                    toast.error(errorMsg);
                 }
             }
         } catch (err) {
+            console.error('Auth error:', err);
             setError('Network error. Please try again.');
             toast.error('Network error. Please try again.');
         }

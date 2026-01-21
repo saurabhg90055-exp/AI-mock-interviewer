@@ -185,6 +185,21 @@ export const userAPI = {
             body: JSON.stringify(settings)
         });
         return response.json();
+    },
+    
+    async syncUserData(totalXP, achievements, stats) {
+        const response = await fetchWithAuth('/user/sync', {
+            method: 'POST',
+            body: JSON.stringify({
+                total_xp: totalXP,
+                achievements: achievements,
+                stats: stats
+            })
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
     }
 };
 
