@@ -178,7 +178,7 @@
 
 .score-label {
     font-size: 0.65rem;
-    color: var(--text-secondary, #f8cf00);
+    color: var(--text-secondary, #f8f400);
     margin-top: 0.25rem;
     white-space: nowrap;
 }
