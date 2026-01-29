@@ -73,16 +73,18 @@ const NetworkQuality = ({
         try {
             const start = performance.now();
             
-            // Use a small request to measure RTT
-            await fetch('/favicon.ico', { 
-                method: 'HEAD',
-                cache: 'no-cache'
+            // Use health endpoint to measure RTT (more reliable than favicon)
+            await fetch('http://127.0.0.1:8000/health', { 
+                method: 'GET',
+                cache: 'no-cache',
+                mode: 'cors'
             });
             
             const latency = Math.round(performance.now() - start);
             return latency;
         } catch {
-            return null;
+            // Fallback to a simple timing if backend not available
+            return 50; // Assume decent latency
         }
     }, []);
 

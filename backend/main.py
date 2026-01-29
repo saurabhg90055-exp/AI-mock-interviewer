@@ -1072,9 +1072,14 @@ Consider this body language data when:
         else:
             ai_response_clean = ai_response
         
-        # Update session history
-        session["history"].append({"role": "user", "content": user_response, "expression": expression_snapshot})
-        session["history"].append({"role": "assistant", "content": ai_response_clean, "score": score})
+        # Update session history (don't add expression to history - causes API error)
+        session["history"].append({"role": "user", "content": user_response})
+        session["history"].append({"role": "assistant", "content": ai_response_clean})
+        
+        # Store expression data separately
+        if "expression_snapshots" not in session:
+            session["expression_snapshots"] = []
+        session["expression_snapshots"].append({"expression": expression_snapshot, "score": score})
         session["question_count"] += 1
         
         # Calculate averages
