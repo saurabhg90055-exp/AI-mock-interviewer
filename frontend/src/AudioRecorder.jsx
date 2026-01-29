@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AIAvatar } from "./components/avatar";
 import { AudioVisualizer } from "./components/audio";
 import { RecordButton, Toast, ScoreDisplay, ScoreBadge, TypingIndicator } from "./components/ui";
+import { VideoInterview, VideoPreview, VideoInterviewSummary } from "./components/video";
 import soundEffects from "./utils/soundEffects";
 
 // API URL - use environment variable or default to localhost
@@ -31,6 +32,7 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     const [selectedCompany, setSelectedCompany] = useState("default");
     const [selectedDifficulty, setSelectedDifficulty] = useState("medium");
     const [selectedDuration, setSelectedDuration] = useState(30);
+    const [interviewMode, setInterviewMode] = useState("audio"); // 'audio' | 'video'
     const [enableTTS, setEnableTTS] = useState(true);
     const [topics, setTopics] = useState([]);
     const [companies, setCompanies] = useState([]);
@@ -95,6 +97,11 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     
     // Setup step state
     const [setupStep, setSetupStep] = useState(1); // 1: basics, 2: resume/JD, 3: confirm
+    
+    // Video mode state
+    const [showVideoPreview, setShowVideoPreview] = useState(false);
+    const [videoExpressionHistory, setVideoExpressionHistory] = useState([]);
+    const [videoMetrics, setVideoMetrics] = useState({});
     
     // Phase 8: Enhanced UI state
     const [avatarState, setAvatarState] = useState('idle'); // 'idle' | 'speaking' | 'listening' | 'thinking' | 'happy' | 'concerned'
@@ -763,7 +770,8 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                     enable_tts: enableTTS,
                     resume_text: resumeText || null,
                     job_description: jobDescription || null,
-                    duration_minutes: selectedDuration
+                    duration_minutes: selectedDuration,
+                    mode: interviewMode
                 })
             });
             const data = await response.json();
@@ -861,6 +869,11 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
         setQuestionFeedback(null);
         // Phase 8: Reset UI state
         setAvatarState('idle');
+        // Video mode: Reset video state
+        setShowVideoPreview(false);
+        setVideoExpressionHistory([]);
+        setVideoMetrics({});
+        setInterviewMode("audio");
     };
 
     const startRecording = async () => {
@@ -1010,6 +1023,148 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
         setIsProcessing(false);
     };
 
+    // Video mode: Analyze audio with expression data
+    const analyzeVideoAudio = async (blob, expressionData) => {
+        if (!blob || !sessionId) return;
+
+        setIsProcessing(true);
+        setAvatarState('thinking');
+        
+        // Play thinking sound
+        if (soundEnabled) soundEffects.play('aiThinking');
+        
+        const formData = new FormData();
+        formData.append("file", blob, "audio.webm");
+        formData.append("confidence", expressionData?.confidence || 0);
+        formData.append("eye_contact", expressionData?.eyeContact || 0);
+        formData.append("emotion", expressionData?.emotion || 'neutral');
+        formData.append("engagement", expressionData?.engagement || 0);
+
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/video/analyze`, {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await response.json();
+            
+            // Update expression history
+            if (data.expression_data) {
+                setVideoExpressionHistory(prev => [...prev, data.expression_data]);
+            }
+            if (data.video_metrics) {
+                setVideoMetrics(data.video_metrics);
+            }
+            
+            if (data.transcription) {
+                setConversationHistory(prev => [
+                    ...prev,
+                    { role: "user", content: data.transcription, score: data.score, expression: expressionData }
+                ]);
+            }
+            if (data.response) {
+                setConversationHistory(prev => [
+                    ...prev,
+                    { role: "assistant", content: data.response }
+                ]);
+                
+                // Speak AI response
+                if (enableTTS) {
+                    speakText(data.response);
+                }
+            }
+            if (data.question_count) {
+                setQuestionCount(data.question_count);
+            }
+            if (data.score) {
+                setCurrentScore(data.score);
+                setAllScores(prev => [...prev, data.score]);
+                
+                // Play appropriate sound based on score
+                if (soundEnabled) {
+                    if (data.score >= 7) {
+                        soundEffects.play('goodScore');
+                        setAvatarState('happy');
+                    } else if (data.score < 5) {
+                        soundEffects.play('badScore');
+                        setAvatarState('concerned');
+                    }
+                }
+            }
+            if (data.average_score) {
+                setAverageScore(data.average_score);
+            }
+            if (data.difficulty_trend) {
+                setDifficultyTrend(data.difficulty_trend);
+            }
+        } catch (error) {
+            console.error("Error sending video audio:", error);
+            if (soundEnabled) soundEffects.play('error');
+            setAvatarState('idle');
+        }
+        setIsProcessing(false);
+    };
+
+    // Video mode: End interview with expression data
+    const endVideoInterview = async () => {
+        if (!sessionId) return;
+        
+        setIsProcessing(true);
+        
+        // Play session end sound
+        if (soundEnabled) soundEffects.play('sessionEnd');
+        
+        const completedSessionId = sessionId;
+        
+        try {
+            const response = await fetch(`${API_URL}/interview/${sessionId}/video/end`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    expression_history: videoExpressionHistory
+                })
+            });
+            const data = await response.json();
+            
+            // Include video-specific data in summary
+            setSummary({ 
+                ...data, 
+                sessionId: completedSessionId,
+                isVideoMode: true,
+                videoMetrics: data.video_metrics || videoMetrics,
+                expressionHistory: videoExpressionHistory,
+                videoFeedback: data.video_feedback || ''
+            });
+            setShowSummary(true);
+            setInterviewStarted(false);
+            setAvatarState('happy');
+            
+            // Notify parent component
+            if (onInterviewComplete && data.score !== undefined) {
+                onInterviewComplete(data.score, selectedDifficulty, questionCount);
+            }
+            
+            // Save to interview history
+            const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+            history.unshift({
+                date: new Date().toISOString(),
+                topic: selectedTopic,
+                difficulty: selectedDifficulty,
+                score: data.score || averageScore || 0,
+                questionCount: questionCount,
+                mode: 'video',
+                expressionStats: {
+                    avgConfidence: data.video_metrics?.averageConfidence || 0,
+                    avgEyeContact: data.video_metrics?.averageEyeContact || 0
+                }
+            });
+            localStorage.setItem('interviewHistory', JSON.stringify(history.slice(0, 50)));
+        } catch (error) {
+            console.error("Error ending video interview:", error);
+        }
+        setIsProcessing(false);
+    };
+
     // ============== AUTH MODAL COMPONENT ==============
     const renderAuthModal = () => {
         if (!showAuthModal) return null;
@@ -1134,6 +1289,43 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
 
     // Render summary view with analytics
     if (showSummary && summary) {
+        // Video mode summary
+        if (summary.isVideoMode) {
+            return (
+                <div className="interview-container video-mode">
+                    {renderNotification()}
+                    {renderAuthHeader()}
+                    {renderAuthModal()}
+                    <VideoInterviewSummary
+                        score={summary.scores?.average ? summary.scores.average * 10 : 0}
+                        totalQuestions={summary.total_questions || questionCount}
+                        correctAnswers={summary.scores?.individual?.filter(s => s >= 7).length || 0}
+                        duration={elapsedTime}
+                        difficulty={summary.difficulty || selectedDifficulty}
+                        topic={summary.topic || selectedTopic}
+                        feedback={summary.feedback}
+                        xpGained={summary.xp_gained}
+                        onRestart={resetInterview}
+                        questionsHistory={conversationHistory.filter(m => m.role === 'assistant').map((m, i) => ({
+                            question: m.content,
+                            score: summary.scores?.individual?.[i],
+                            correct: (summary.scores?.individual?.[i] || 0) >= 7
+                        }))}
+                        sessionId={summary.sessionId}
+                        isGuest={!isAuthenticated}
+                        onRequireAuth={(action) => {
+                            setAuthMode('login');
+                            setShowAuthModal(true);
+                        }}
+                        videoMetrics={summary.videoMetrics}
+                        expressionHistory={summary.expressionHistory || videoExpressionHistory}
+                        videoFeedback={summary.videoFeedback}
+                    />
+                </div>
+            );
+        }
+        
+        // Standard audio mode summary
         return (
             <div className="interview-container">
                 {renderNotification()}
@@ -1466,6 +1658,36 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                 </div>
                                 
                                 <div className="form-group">
+                                    <label>🎬 Interview Mode:</label>
+                                    <div className="mode-buttons">
+                                        <button
+                                            className={`mode-btn-large ${interviewMode === 'audio' ? 'active' : ''}`}
+                                            onClick={() => setInterviewMode('audio')}
+                                        >
+                                            <span className="mode-icon">🎤</span>
+                                            <span className="mode-title">Audio Mode</span>
+                                            <span className="mode-desc">Voice-based interview</span>
+                                        </button>
+                                        <button
+                                            className={`mode-btn-large ${interviewMode === 'video' ? 'active video' : ''}`}
+                                            onClick={() => setInterviewMode('video')}
+                                        >
+                                            <span className="mode-icon">📹</span>
+                                            <span className="mode-title">Video Mode</span>
+                                            <span className="mode-desc">With expression analysis</span>
+                                            <span className="mode-badge">✨ Pro</span>
+                                        </button>
+                                    </div>
+                                    {interviewMode === 'video' && (
+                                        <div className="video-mode-features">
+                                            <p>📹 Real-time video with AI interviewer</p>
+                                            <p>😊 Expression & confidence analysis</p>
+                                            <p>👁️ Eye contact tracking</p>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="form-group">
                                     <label>⏱️ Interview Duration:</label>
                                     <div className="duration-buttons">
                                         {[15, 30, 45, 60].map(mins => (
@@ -1559,6 +1781,12 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                 <div className="confirmation-summary">
                                     <h3>📋 Interview Configuration</h3>
                                     <div className="config-item">
+                                        <span className="config-label">Interview Mode:</span>
+                                        <span className={`config-value mode-value ${interviewMode}`}>
+                                            {interviewMode === 'video' ? '📹 Video Mode' : '🎤 Audio Mode'}
+                                        </span>
+                                    </div>
+                                    <div className="config-item">
                                         <span className="config-label">Topic:</span>
                                         <span className="config-value">{topics.find(t => t.id === selectedTopic)?.name}</span>
                                     </div>
@@ -1596,22 +1824,64 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                         ← Back
                                     </button>
                                     <button 
-                                        onClick={startInterview} 
+                                        onClick={() => {
+                                            if (interviewMode === 'video') {
+                                                setShowVideoPreview(true);
+                                            } else {
+                                                startInterview();
+                                            }
+                                        }} 
                                         disabled={isProcessing}
                                         className="btn btn-primary btn-large"
                                     >
-                                        {isProcessing ? "Starting..." : "🚀 Start Interview"}
+                                        {isProcessing ? "Starting..." : interviewMode === 'video' ? "📹 Camera Check" : "🚀 Start Interview"}
                                     </button>
                                 </div>
                             </>
                         )}
                     </div>
                 </div>
+                
+                {/* Video Preview Modal */}
+                {showVideoPreview && (
+                    <div className="video-preview-overlay">
+                        <VideoPreview
+                            onReady={() => {
+                                setShowVideoPreview(false);
+                                startInterview();
+                            }}
+                            onCancel={() => setShowVideoPreview(false)}
+                        />
+                    </div>
+                )}
             </div>
         );
     }
 
-    // Render interview view
+    // Render Video Interview view
+    if (interviewStarted && interviewMode === 'video') {
+        return (
+            <VideoInterview
+                sessionId={sessionId}
+                onEndInterview={endVideoInterview}
+                onSendAudio={analyzeVideoAudio}
+                conversationHistory={conversationHistory}
+                isProcessing={isProcessing}
+                isSpeaking={isSpeaking}
+                currentScore={currentScore}
+                averageScore={averageScore}
+                questionCount={questionCount}
+                elapsedTime={elapsedTime}
+                remainingTime={remainingTime}
+                isTimeWarning={isTimeWarning}
+                avatarState={avatarState}
+                settings={settings}
+                enableTTS={enableTTS}
+            />
+        );
+    }
+
+    // Render Audio interview view
     return (
         <div className="interview-container">
             {renderNotification()}

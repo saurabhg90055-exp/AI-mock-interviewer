@@ -1,0 +1,112 @@
+/* Video Coaching Tips Styles */
+
+.video-coaching-tip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    max-width: 320px;
+}
+
+.video-coaching-tip.compact {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    gap: 8px;
+    max-width: 250px;
+}
+
+.tip-icon {
+    flex-shrink: 0;
+}
+
+.tip-message {
+    line-height: 1.4;
+}
+
+/* Tip types */
+.tip-warning {
+    background: linear-gradient(135deg, rgba(237, 137, 54, 0.95), rgba(246, 173, 85, 0.95));
+    color: white;
+    border: 1px solid rgba(237, 137, 54, 0.3);
+}
+
+.tip-warning .tip-icon {
+    color: white;
+}
+
+.tip-success {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.95), rgba(104, 211, 145, 0.95));
+    color: white;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.tip-success .tip-icon {
+    color: white;
+}
+
+.tip-encouragement {
+    background: linear-gradient(135deg, rgba(159, 122, 234, 0.95), rgba(183, 148, 244, 0.95));
+    color: white;
+    border: 1px solid rgba(159, 122, 234, 0.3);
+}
+
+.tip-encouragement .tip-icon {
+    color: white;
+}
+
+.tip-info {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95), rgba(118, 75, 162, 0.95));
+    color: white;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.tip-info .tip-icon {
+    color: white;
+}
+
+/* Animation pulse effect for warning */
+.tip-warning::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(237, 137, 54, 0.4), rgba(246, 173, 85, 0.4));
+    animation: tip-pulse 2s ease-in-out infinite;
+    z-index: -1;
+}
+
+@keyframes tip-pulse {
+    0%, 100% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.2;
+        transform: scale(1.02);
+    }
+}
+
+/* Dark mode */
+[data-theme="dark"] .video-coaching-tip {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .video-coaching-tip {
+        padding: 10px 14px;
+        font-size: 0.85rem;
+        max-width: 280px;
+    }
+    
+    .video-coaching-tip.compact {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        max-width: 220px;
+    }
+}

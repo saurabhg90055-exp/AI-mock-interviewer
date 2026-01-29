@@ -234,6 +234,7 @@ class InterviewSession(BaseModel):
     job_description: Optional[str] = None
     resume_text: Optional[str] = None
     duration_minutes: int = 30
+    mode: str = "audio"  # 'audio' | 'video'
 
 
 class Message(BaseModel):
@@ -247,6 +248,22 @@ class TextToSpeechRequest(BaseModel):
 
 class ResumeParseRequest(BaseModel):
     text: str
+
+
+class ExpressionData(BaseModel):
+    """Expression data captured from video interview"""
+    confidence: float = 0
+    eyeContact: float = 0
+    emotion: str = "neutral"
+    engagement: float = 0
+    posture: str = "unknown"
+    timestamp: Optional[int] = None
+
+
+class VideoAnalysisRequest(BaseModel):
+    """Request for video analysis with expression data"""
+    expression_data: ExpressionData
+    transcript: Optional[str] = None
 
 
 @app.get("/")
@@ -642,7 +659,17 @@ IMPORTANT INSTRUCTIONS:
         "duration_minutes": session.duration_minutes,
         "has_resume": bool(session.resume_text),
         "has_job_description": bool(session.job_description),
-        "user_id": user_id
+        "user_id": user_id,
+        "mode": session.mode,
+        # Video mode specific data
+        "expression_history": [],
+        "video_metrics": {
+            "avg_confidence": 0,
+            "avg_eye_contact": 0,
+            "avg_engagement": 0,
+            "emotion_distribution": {},
+            "confidence_trend": "stable"
+        }
     }
     
     # Save to MongoDB only if authenticated user
@@ -660,7 +687,8 @@ IMPORTANT INSTRUCTIONS:
             "transcript": [{"role": "assistant", "content": opening}],
             "has_resume": bool(session.resume_text),
             "has_job_description": bool(session.job_description),
-            "status": "active"
+            "status": "active",
+            "mode": session.mode
         })
     
     return {
@@ -673,7 +701,8 @@ IMPORTANT INSTRUCTIONS:
         "duration_minutes": session.duration_minutes,
         "has_resume": bool(session.resume_text),
         "has_job_description": bool(session.job_description),
-        "is_guest": user_id is None
+        "is_guest": user_id is None,
+        "mode": session.mode
     }
 
 
@@ -861,6 +890,343 @@ Be constructive, specific, and actionable."""
             "ended_at": datetime.utcnow(),
             "duration_seconds": duration_seconds,
             "status": "completed"
+        })
+    
+    del interview_sessions[session_id]
+    
+    return result
+
+
+# ============== VIDEO INTERVIEW ENDPOINTS ==============
+
+@app.post("/interview/{session_id}/video/expression")
+async def record_expression_data(session_id: str, expression: ExpressionData):
+    """Record expression data snapshot from video interview"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    
+    # Add timestamp if not provided
+    if not expression.timestamp:
+        expression.timestamp = int(time.time() * 1000)
+    
+    # Add to expression history
+    session["expression_history"].append({
+        "confidence": expression.confidence,
+        "eyeContact": expression.eyeContact,
+        "emotion": expression.emotion,
+        "engagement": expression.engagement,
+        "posture": expression.posture,
+        "timestamp": expression.timestamp
+    })
+    
+    # Update running metrics
+    history = session["expression_history"]
+    if len(history) > 0:
+        session["video_metrics"]["avg_confidence"] = round(
+            sum(h["confidence"] for h in history) / len(history), 1
+        )
+        session["video_metrics"]["avg_eye_contact"] = round(
+            sum(h["eyeContact"] for h in history) / len(history), 1
+        )
+        session["video_metrics"]["avg_engagement"] = round(
+            sum(h["engagement"] for h in history) / len(history), 1
+        )
+        
+        # Calculate emotion distribution
+        emotion_counts = {}
+        for h in history:
+            emotion_counts[h["emotion"]] = emotion_counts.get(h["emotion"], 0) + 1
+        session["video_metrics"]["emotion_distribution"] = {
+            k: round(v / len(history) * 100, 1) 
+            for k, v in emotion_counts.items()
+        }
+        
+        # Calculate confidence trend
+        if len(history) >= 10:
+            mid = len(history) // 2
+            first_half_avg = sum(h["confidence"] for h in history[:mid]) / mid
+            second_half_avg = sum(h["confidence"] for h in history[mid:]) / (len(history) - mid)
+            if second_half_avg > first_half_avg + 10:
+                session["video_metrics"]["confidence_trend"] = "improving"
+            elif second_half_avg < first_half_avg - 10:
+                session["video_metrics"]["confidence_trend"] = "declining"
+            else:
+                session["video_metrics"]["confidence_trend"] = "stable"
+    
+    return {
+        "success": True,
+        "total_samples": len(history),
+        "current_metrics": session["video_metrics"]
+    }
+
+
+@app.get("/interview/{session_id}/video/metrics")
+async def get_video_metrics(session_id: str):
+    """Get current video interview metrics"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    
+    return {
+        "session_id": session_id,
+        "mode": session.get("mode", "audio"),
+        "metrics": session["video_metrics"],
+        "total_samples": len(session["expression_history"]),
+        "expression_history": session["expression_history"][-20:]  # Last 20 samples
+    }
+
+
+@app.post("/interview/{session_id}/video/analyze")
+@limiter.limit("30/minute")
+async def analyze_video_response(
+    request: Request,
+    session_id: str,
+    file: UploadFile = File(...),
+    confidence: float = Form(0),
+    eye_contact: float = Form(0),
+    emotion: str = Form("neutral"),
+    engagement: float = Form(0)
+):
+    """Process audio with expression data for video interview"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    
+    # Record expression data
+    expression_snapshot = {
+        "confidence": confidence,
+        "eyeContact": eye_contact,
+        "emotion": emotion,
+        "engagement": engagement,
+        "timestamp": int(time.time() * 1000)
+    }
+    session["expression_history"].append(expression_snapshot)
+    
+    try:
+        # Save and transcribe audio (same as regular analyze)
+        temp_filename = f"temp_audio_{session_id}.webm"
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Transcribe audio
+        with open(temp_filename, "rb") as audio_file:
+            transcription = client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3-turbo",
+                response_format="text"
+            )
+        
+        user_response = transcription.strip()
+        
+        # Clean up temp file
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+        
+        # Add expression context to the AI prompt for video mode
+        expression_context = ""
+        if session.get("mode") == "video":
+            expression_context = f"""
+
+[VIDEO ANALYSIS]
+Current expression data for this response:
+- Confidence Level: {confidence}%
+- Eye Contact: {eye_contact}%
+- Detected Emotion: {emotion}
+- Engagement Level: {engagement}%
+
+Consider this body language data when:
+1. Providing feedback (mention if they seemed nervous or confident)
+2. Adjusting your next question's difficulty
+3. Offering encouragement if confidence is low (<50%)
+"""
+        
+        # Build conversation for AI
+        messages = [{"role": "system", "content": session["system_prompt"] + expression_context}]
+        messages.extend(session["history"])
+        messages.append({"role": "user", "content": user_response})
+        
+        # Get AI response
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=300
+        )
+        
+        ai_response = completion.choices[0].message.content
+        
+        # Extract score
+        score = None
+        score_match = re.search(r'\[SCORE:\s*(\d+(?:\.\d+)?)/10\]', ai_response)
+        if score_match:
+            score = float(score_match.group(1))
+            session["scores"].append(score)
+            ai_response_clean = re.sub(r'\s*\[SCORE:\s*\d+(?:\.\d+)?/10\]', '', ai_response)
+        else:
+            ai_response_clean = ai_response
+        
+        # Update session history
+        session["history"].append({"role": "user", "content": user_response, "expression": expression_snapshot})
+        session["history"].append({"role": "assistant", "content": ai_response_clean, "score": score})
+        session["question_count"] += 1
+        
+        # Calculate averages
+        scores = session["scores"]
+        avg_score = round(sum(scores) / len(scores), 1) if scores else None
+        
+        return {
+            "transcription": user_response,
+            "response": ai_response_clean,
+            "score": score,
+            "average_score": avg_score,
+            "question_count": session["question_count"],
+            "expression_data": expression_snapshot,
+            "video_metrics": session["video_metrics"],
+            "difficulty_trend": session["video_metrics"]["confidence_trend"]
+        }
+        
+    except Exception as e:
+        print(f"Video analysis error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/interview/{session_id}/video/end")
+async def end_video_interview(session_id: str):
+    """End video interview and get comprehensive summary with expression analysis"""
+    
+    if session_id not in interview_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = interview_sessions[session_id]
+    
+    scores = session.get("scores", [])
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    min_score = min(scores) if scores else None
+    max_score = max(scores) if scores else None
+    
+    start_time = session.get("start_time", time.time())
+    duration_seconds = int(time.time() - start_time)
+    
+    video_metrics = session.get("video_metrics", {})
+    expression_history = session.get("expression_history", [])
+    
+    # Generate comprehensive video summary using AI
+    expression_summary = f"""
+Video Interview Expression Analysis:
+- Average Confidence: {video_metrics.get('avg_confidence', 0)}%
+- Average Eye Contact: {video_metrics.get('avg_eye_contact', 0)}%  
+- Average Engagement: {video_metrics.get('avg_engagement', 0)}%
+- Confidence Trend: {video_metrics.get('confidence_trend', 'stable')}
+- Emotion Distribution: {video_metrics.get('emotion_distribution', {})}
+- Total Expression Samples: {len(expression_history)}
+"""
+    
+    summary_prompt = f"""Based on this VIDEO interview conversation and expression analysis, provide a comprehensive assessment:
+    
+Interview Topic: {session.get('topic_name', session['topic'])}
+Company Style: {session.get('company_name', 'Standard')}
+Difficulty: {session['difficulty']}
+Number of exchanges: {session['question_count']}
+Scores: {scores}
+Average score: {avg_score}/10
+
+{expression_summary}
+
+Conversation:
+{chr(10).join([f"{msg['role'].upper()}: {msg['content']}" for msg in session['history'][:10]])}
+
+Provide a structured VIDEO interview assessment:
+1. **Overall Impression** (considering both content AND body language)
+2. **Technical Performance** - Rate and explain
+3. **Communication & Presence** - Rate based on expression data
+4. **Confidence Analysis** - Based on {video_metrics.get('avg_confidence', 0)}% average confidence
+5. **Eye Contact Assessment** - Based on {video_metrics.get('avg_eye_contact', 0)}% eye contact
+6. **Body Language Strengths**
+7. **Body Language Areas to Improve**
+8. **Specific Recommendations** for video interviews
+9. **Final Overall Score**: X/10
+
+Be constructive and specific about video presence."""
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": summary_prompt}],
+            temperature=0.5,
+            max_tokens=600
+        )
+        summary = completion.choices[0].message.content
+    except Exception:
+        summary = "Unable to generate video summary. Please try again."
+    
+    # Calculate combined score (50% technical, 30% confidence, 20% eye contact)
+    technical_score = avg_score or 5
+    confidence_score = (video_metrics.get("avg_confidence", 50) / 100) * 10
+    eye_contact_score = (video_metrics.get("avg_eye_contact", 50) / 100) * 10
+    
+    combined_score = round(
+        (technical_score * 0.5) + 
+        (confidence_score * 0.3) + 
+        (eye_contact_score * 0.2), 
+        1
+    )
+    
+    result = {
+        "session_id": session_id,
+        "mode": "video",
+        "topic": session.get("topic_name", session["topic"]),
+        "company_style": session.get("company_name", "Standard"),
+        "difficulty": session["difficulty"],
+        "total_questions": session["question_count"],
+        "scores": {
+            "individual": scores,
+            "average": avg_score,
+            "min": min_score,
+            "max": max_score,
+            "trend": "improving" if len(scores) >= 2 and scores[-1] > scores[0] else "stable"
+        },
+        "video_metrics": video_metrics,
+        "combined_score": combined_score,
+        "score_breakdown": {
+            "technical": round(technical_score, 1),
+            "confidence": round(confidence_score, 1),
+            "eye_contact": round(eye_contact_score, 1)
+        },
+        "expression_summary": {
+            "total_samples": len(expression_history),
+            "confidence_trend": video_metrics.get("confidence_trend", "stable"),
+            "dominant_emotion": max(
+                video_metrics.get("emotion_distribution", {"neutral": 100}).items(),
+                key=lambda x: x[1]
+            )[0] if video_metrics.get("emotion_distribution") else "neutral"
+        },
+        "summary": summary,
+        "history": session["history"],
+        "duration_seconds": duration_seconds,
+        "is_guest": session.get("user_id") is None
+    }
+    
+    # Update MongoDB if user is authenticated
+    if session.get("user_id"):
+        await update_interview(session_id, {
+            "scores": scores,
+            "average_score": avg_score,
+            "combined_score": combined_score,
+            "video_metrics": video_metrics,
+            "transcript": session["history"],
+            "summary": summary,
+            "question_count": session["question_count"],
+            "ended_at": datetime.utcnow(),
+            "duration_seconds": duration_seconds,
+            "status": "completed",
+            "mode": "video"
         })
     
     del interview_sessions[session_id]

@@ -336,3 +336,62 @@
     height: 140px;
   }
 }
+
+/* Video Mode Feedback Message */
+.video-feedback-message {
+  position: absolute;
+  bottom: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(56, 178, 172, 0.95), rgba(129, 230, 217, 0.95));
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(56, 178, 172, 0.4);
+  z-index: 10;
+}
+
+.video-feedback-message::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(56, 178, 172, 0.95);
+}
+
+/* Encouraging state */
+.ai-avatar-container.encouraging .avatar-head {
+  animation: encouraging-bounce 0.8s ease-in-out infinite;
+}
+
+@keyframes encouraging-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Impressed state */
+.ai-avatar-container.impressed .avatar-head {
+  animation: impressed-glow 1s ease-in-out infinite;
+}
+
+@keyframes impressed-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+/* Status colors for new states */
+.avatar-status.status-encouraging {
+  background: linear-gradient(135deg, #38b2ac, #81e6d9);
+  color: white;
+}
+
+.avatar-status.status-impressed {
+  background: linear-gradient(135deg, #9f7aea, #b794f4);
+  color: white;
+}

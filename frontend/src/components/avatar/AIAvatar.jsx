@@ -1,18 +1,56 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './AIAvatar.css';
 
 /**
  * AI Interviewer Avatar Component
  * Animated avatar that responds to different states: idle, speaking, listening, thinking
+ * Enhanced for video mode with expression-aware responses
  */
 const AIAvatar = ({ 
-  state = 'idle', // 'idle' | 'speaking' | 'listening' | 'thinking' | 'happy' | 'concerned'
+  state = 'idle', // 'idle' | 'speaking' | 'listening' | 'thinking' | 'happy' | 'concerned' | 'encouraging' | 'impressed'
   audioLevel = 0,
   score = null,
-  size = 'large' // 'small' | 'medium' | 'large'
+  size = 'large', // 'small' | 'medium' | 'large'
+  userExpression = null, // For video mode: { confidence, eyeContact, emotion, engagement }
+  videoMode = false,
+  showFeedback = false
 }) => {
   const containerRef = useRef(null);
+  const [adaptiveState, setAdaptiveState] = useState(state);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  
+  // Adapt avatar state based on user expression in video mode
+  useEffect(() => {
+    if (!videoMode || !userExpression) {
+      setAdaptiveState(state);
+      return;
+    }
+    
+    const { confidence, eyeContact, emotion, engagement } = userExpression;
+    
+    // If AI is not speaking/thinking, adapt to user's state
+    if (state === 'listening' || state === 'idle') {
+      if (confidence < 40) {
+        setAdaptiveState('encouraging');
+        setFeedbackMessage('You\'re doing great! Take your time.');
+      } else if (confidence > 80 && engagement > 70) {
+        setAdaptiveState('impressed');
+        setFeedbackMessage('Excellent energy!');
+      } else if (emotion === 'nervous') {
+        setAdaptiveState('encouraging');
+        setFeedbackMessage('Relax, you\'ve got this!');
+      } else if (eyeContact < 30) {
+        setFeedbackMessage('Try to maintain eye contact');
+        setAdaptiveState('listening');
+      } else {
+        setAdaptiveState(state);
+        setFeedbackMessage('');
+      }
+    } else {
+      setAdaptiveState(state);
+    }
+  }, [state, userExpression, videoMode]);
   
   // Generate wave bars for speaking animation
   const waveBars = useMemo(() => 
@@ -25,11 +63,13 @@ const AIAvatar = ({
 
   // Determine avatar expression based on state and score
   const getExpression = () => {
-    if (state === 'happy' || (score && score >= 8)) return 'happy';
-    if (state === 'concerned' || (score && score < 5)) return 'concerned';
-    if (state === 'thinking') return 'thinking';
-    if (state === 'listening') return 'listening';
-    if (state === 'speaking') return 'speaking';
+    if (adaptiveState === 'encouraging') return 'encouraging';
+    if (adaptiveState === 'impressed') return 'impressed';
+    if (adaptiveState === 'happy' || (score && score >= 8)) return 'happy';
+    if (adaptiveState === 'concerned' || (score && score < 5)) return 'concerned';
+    if (adaptiveState === 'thinking') return 'thinking';
+    if (adaptiveState === 'listening') return 'listening';
+    if (adaptiveState === 'speaking') return 'speaking';
     return 'idle';
   };
 
@@ -59,6 +99,16 @@ const AIAvatar = ({
       scaleY: 1.1,
       scaleX: 1.1,
       transition: { duration: 0.3 }
+    },
+    encouraging: {
+      scaleY: 0.8,
+      scaleX: 1.1,
+      transition: { duration: 0.3 }
+    },
+    impressed: {
+      scaleY: 1.2,
+      scaleX: 1.1,
+      transition: { duration: 0.3 }
     }
   };
 
@@ -77,6 +127,20 @@ const AIAvatar = ({
           height: 12,
           width: 35,
           borderRadius: '0 0 50% 50%',
+          transition: { duration: 0.3 }
+        };
+      case 'encouraging':
+        return {
+          height: 10,
+          width: 32,
+          borderRadius: '0 0 50% 50%',
+          transition: { duration: 0.3 }
+        };
+      case 'impressed':
+        return {
+          height: 15,
+          width: 25,
+          borderRadius: '50%',
           transition: { duration: 0.3 }
         };
       case 'concerned':
@@ -140,6 +204,8 @@ const AIAvatar = ({
       case 'thinking': return 'rgba(237, 137, 54, 0.6)';
       case 'happy': return 'rgba(72, 187, 120, 0.8)';
       case 'concerned': return 'rgba(245, 101, 101, 0.5)';
+      case 'encouraging': return 'rgba(56, 178, 172, 0.7)';
+      case 'impressed': return 'rgba(159, 122, 234, 0.8)';
       default: return 'rgba(102, 126, 234, 0.3)';
     }
   };
@@ -335,8 +401,24 @@ const AIAvatar = ({
           {expression === 'thinking' && '🤔 Thinking...'}
           {expression === 'happy' && '😊 Great answer!'}
           {expression === 'concerned' && '💭 Let\'s improve'}
+          {expression === 'encouraging' && '💪 You\'ve got this!'}
+          {expression === 'impressed' && '🌟 Impressive!'}
           {expression === 'idle' && '🤖 AI Interviewer'}
         </motion.div>
+
+        {/* Video Mode Feedback Message */}
+        <AnimatePresence>
+          {videoMode && showFeedback && feedbackMessage && (
+            <motion.div 
+              className="video-feedback-message"
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.9 }}
+            >
+              {feedbackMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Audio level indicator (when listening) */}

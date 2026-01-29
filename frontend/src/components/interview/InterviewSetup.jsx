@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Briefcase, Target, Zap, ChevronRight, Sparkles, Brain, Trophy, Star } from 'lucide-react';
+import { Settings, Briefcase, Target, Zap, ChevronRight, Sparkles, Brain, Trophy, Star, Mic, Video, Camera, Eye, Shield } from 'lucide-react';
 import './InterviewSetup.css';
 
 const InterviewSetup = ({
@@ -10,6 +10,8 @@ const InterviewSetup = ({
     setSelectedCompany,
     selectedDifficulty,
     setSelectedDifficulty,
+    interviewMode,
+    setInterviewMode,
     topics,
     companies,
     difficulties,
@@ -104,6 +106,83 @@ const InterviewSetup = ({
 
             {/* Setup Form */}
             <motion.div className="setup-form" variants={itemVariants}>
+                {/* Interview Mode Selection */}
+                <div className="form-group">
+                    <label className="form-label">
+                        <Video className="label-icon" />
+                        Interview Mode
+                    </label>
+                    <div className="mode-grid">
+                        <motion.button
+                            className={`mode-card ${interviewMode === 'audio' ? 'selected' : ''}`}
+                            onClick={() => setInterviewMode('audio')}
+                            whileHover={{ scale: 1.03, y: -4 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            <div className="mode-icon-wrapper audio-mode">
+                                <Mic size={28} />
+                            </div>
+                            <div className="mode-content">
+                                <span className="mode-name">Audio Mode</span>
+                                <span className="mode-desc">Voice-based interview with AI</span>
+                            </div>
+                            <div className="mode-features">
+                                <span className="feature-tag">🎤 Voice Only</span>
+                                <span className="feature-tag">⚡ Quick Setup</span>
+                            </div>
+                        </motion.button>
+
+                        <motion.button
+                            className={`mode-card ${interviewMode === 'video' ? 'selected' : ''}`}
+                            onClick={() => setInterviewMode('video')}
+                            whileHover={{ scale: 1.03, y: -4 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            <div className="mode-icon-wrapper video-mode">
+                                <Camera size={28} />
+                            </div>
+                            <div className="mode-content">
+                                <span className="mode-name">Video Mode</span>
+                                <span className="mode-desc">Full video interview with expression analysis</span>
+                            </div>
+                            <div className="mode-features">
+                                <span className="feature-tag">📹 Camera</span>
+                                <span className="feature-tag">😊 Expressions</span>
+                                <span className="feature-tag">👁️ Eye Contact</span>
+                            </div>
+                            <div className="mode-badge premium">
+                                <Sparkles size={12} />
+                                <span>Pro Features</span>
+                            </div>
+                        </motion.button>
+                    </div>
+                    
+                    {interviewMode === 'video' && (
+                        <motion.div 
+                            className="video-mode-info"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                        >
+                            <div className="info-header">
+                                <Eye size={18} />
+                                <span>Video Mode Features</span>
+                            </div>
+                            <ul className="info-list">
+                                <li>📹 Real-time video interview with AI interviewer</li>
+                                <li>😊 Expression & emotion analysis throughout</li>
+                                <li>👁️ Eye contact tracking and feedback</li>
+                                <li>📊 Confidence score based on body language</li>
+                                <li>💡 Personalized tips based on your expressions</li>
+                            </ul>
+                            <div className="camera-permission-note">
+                                <Shield size={14} />
+                                <span>Camera access required. Your video is processed locally.</span>
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
+
                 {/* Topic Selection */}
                 <div className="form-group">
                     <label className="form-label">
@@ -183,18 +262,31 @@ const InterviewSetup = ({
             {/* Start Button */}
             <motion.div className="setup-actions" variants={itemVariants}>
                 <motion.button
-                    className="start-interview-btn"
+                    className={`start-interview-btn ${interviewMode === 'video' ? 'video-mode' : ''}`}
                     onClick={onStartInterview}
-                    disabled={!selectedTopic || !selectedCompany || !selectedDifficulty}
+                    disabled={!selectedTopic || !selectedCompany || !selectedDifficulty || !interviewMode}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(99, 102, 241, 0.3)' }}
                     whileTap={{ scale: 0.98 }}
                 >
-                    <span>Start Interview</span>
+                    {interviewMode === 'video' ? (
+                        <>
+                            <Camera size={20} />
+                            <span>Start Video Interview</span>
+                        </>
+                    ) : (
+                        <>
+                            <Mic size={20} />
+                            <span>Start Audio Interview</span>
+                        </>
+                    )}
                     <ChevronRight className="btn-icon" />
                 </motion.button>
                 
                 <p className="setup-tip">
-                    💡 Tip: Practice regularly to improve your interview performance
+                    {interviewMode === 'video' 
+                        ? '📹 Tip: Ensure good lighting and look directly at your camera'
+                        : '💡 Tip: Practice regularly to improve your interview performance'
+                    }
                 </p>
             </motion.div>
         </motion.div>
