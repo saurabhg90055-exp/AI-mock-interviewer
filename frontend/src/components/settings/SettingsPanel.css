@@ -425,3 +425,109 @@
     font-weight: 600;
     cursor: pointer;
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Settings Panel Light Theme */
+[data-theme="light"] .settings-panel {
+    background: #fff;
+    border-left-color: rgba(0, 0, 0, 0.1);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .settings-header {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .settings-header h2 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .settings-header .close-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .settings-header .close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #1a1a2e;
+}
+
+/* Settings Tabs Light Theme */
+[data-theme="light"] .settings-tabs {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .tab-btn {
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .tab-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .tab-btn.active {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.3);
+    color: #4f46e5;
+}
+
+/* Setting Items Light Theme */
+[data-theme="light"] .setting-item {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .setting-label {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .setting-desc {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Slider Light Theme */
+[data-theme="light"] .slider-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Profile Form Light Theme */
+[data-theme="light"] .profile-input {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .profile-input:focus {
+    background: #fff;
+    border-color: #4f46e5;
+}
+
+[data-theme="light"] .profile-input::placeholder {
+    color: #9ca3af;
+}
+
+/* Section Title Light Theme */
+[data-theme="light"] .section-title {
+    color: #1a1a2e;
+}
+
+/* Settings Divider Light Theme */
+[data-theme="light"] .settings-divider {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Export Button Light Theme */
+[data-theme="light"] .export-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .export-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: #4f46e5;
+}

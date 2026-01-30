@@ -217,3 +217,74 @@
         font-size: 1.5rem;
     }
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Auth Modal Light Theme */
+[data-theme="light"] .auth-modal {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .modal-close-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #1a1a2e;
+}
+
+/* Auth Header Light Theme */
+[data-theme="light"] .auth-modal-header p {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* Auth Form Light Theme */
+[data-theme="light"] .auth-form label {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .input-icon {
+    color: rgba(26, 26, 46, 0.4);
+}
+
+[data-theme="light"] .auth-form input {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .auth-form input:focus {
+    background: #fff;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="light"] .auth-form input::placeholder {
+    color: rgba(26, 26, 46, 0.3);
+}
+
+[data-theme="light"] .password-toggle {
+    color: rgba(26, 26, 46, 0.4);
+}
+
+[data-theme="light"] .password-toggle:hover {
+    color: #1a1a2e;
+}
+
+/* Auth Footer Light Theme */
+[data-theme="light"] .auth-footer {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .auth-footer button {
+    color: #4f46e5;
+}
+
+[data-theme="light"] .auth-footer button:hover {
+    color: #6366f1;
+}

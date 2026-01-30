@@ -32,7 +32,7 @@
 }
 
 .theme-option.active {
-    border-color: #fff;
+    border-color: var(--color-text, #fff);
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
@@ -46,4 +46,15 @@
     color: #fff;
     font-size: 12px;
     font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Light Theme Support */
+[data-theme="light"] .theme-label {
+    color: var(--color-textMuted, rgba(26, 26, 46, 0.6));
+}
+
+[data-theme="light"] .theme-option.active {
+    border-color: var(--color-text, #1a1a2e);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }

@@ -139,6 +139,17 @@ export const ThemeProvider = ({ children }) => {
         
         // Apply background to body
         document.body.style.background = theme.colors.background;
+        
+        // Set data-theme attribute for CSS targeting
+        document.documentElement.setAttribute('data-theme', themeName);
+        document.body.setAttribute('data-theme', themeName);
+        
+        // Set color scheme for browser UI elements
+        if (themeName === 'light') {
+            document.documentElement.style.colorScheme = 'light';
+        } else {
+            document.documentElement.style.colorScheme = 'dark';
+        }
     }, [themeName, theme]);
 
     const setTheme = (name) => {

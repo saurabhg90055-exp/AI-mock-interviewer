@@ -114,3 +114,32 @@
     color: #a5b4fc;
     font-size: 0.875rem;
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+[data-theme="light"] .skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.05) 25%,
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.05) 75%
+    );
+    background-size: 200% 100%;
+}
+
+[data-theme="light"] .page-loader {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .loader-message {
+    color: rgba(26, 26, 46, 0.8);
+}
+
+[data-theme="light"] .ai-thinking {
+    background: rgba(79, 70, 229, 0.08);
+    border-color: rgba(79, 70, 229, 0.15);
+}
+
+[data-theme="light"] .thinking-message {
+    color: #4f46e5;
+}

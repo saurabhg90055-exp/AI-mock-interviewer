@@ -116,3 +116,13 @@
 .badge-good {
   box-shadow: 0 0 15px rgba(72, 187, 120, 0.2);
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+[data-theme="light"] .score-max {
+    color: #6b7280;
+}
+
+[data-theme="light"] .score-label {
+    color: #6b7280;
+}

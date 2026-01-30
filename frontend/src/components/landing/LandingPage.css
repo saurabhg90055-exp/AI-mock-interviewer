@@ -529,6 +529,172 @@
     color: rgba(255, 255, 255, 0.4);
 }
 
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Hero Section Light Theme */
+[data-theme="light"] .title-line-1 {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .hero-subtitle {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .hero-features {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .hero-feature {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .cta-note {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Hero Badge Light Theme */
+[data-theme="light"] .hero-badge {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.25);
+    color: #4f46e5;
+}
+
+/* Hero Stats Light Theme */
+[data-theme="light"] .hero-stats {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .stat-label {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+[data-theme="light"] .stat-divider {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Section Headers Light Theme */
+[data-theme="light"] .section-badge {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.25);
+    color: #4f46e5;
+}
+
+[data-theme="light"] .section-title {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .section-subtitle {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* Feature Cards Light Theme */
+[data-theme="light"] .feature-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .feature-card:hover {
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .feature-icon {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(124, 58, 237, 0.15));
+    color: #4f46e5;
+}
+
+[data-theme="light"] .feature-title {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .feature-description {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+/* How It Works Section Light Theme */
+[data-theme="light"] .how-it-works {
+    background: rgba(79, 70, 229, 0.03);
+}
+
+[data-theme="light"] .step-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .step-card:hover {
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.25);
+}
+
+[data-theme="light"] .step-icon {
+    background: rgba(79, 70, 229, 0.1);
+    color: #4f46e5;
+}
+
+[data-theme="light"] .step-card h3 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .step-card p {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .step-connector {
+    color: rgba(79, 70, 229, 0.4);
+}
+
+/* Testimonials Light Theme */
+[data-theme="light"] .testimonial-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .testimonial-card:hover {
+    background: #fff;
+}
+
+[data-theme="light"] .testimonial-quote {
+    color: rgba(26, 26, 46, 0.85);
+}
+
+[data-theme="light"] .author-name {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .author-role {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Final CTA Light Theme */
+[data-theme="light"] .cta-gradient {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.06) 0%, rgba(124, 58, 237, 0.06) 100%);
+}
+
+[data-theme="light"] .cta-content h2 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .cta-content p {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* Footer Light Theme */
+[data-theme="light"] .landing-footer {
+    border-top-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .footer-brand {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .footer-copyright {
+    color: rgba(26, 26, 46, 0.5);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .hero-section {

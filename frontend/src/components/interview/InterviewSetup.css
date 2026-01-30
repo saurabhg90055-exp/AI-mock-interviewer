@@ -557,3 +557,186 @@
         padding: 1.25rem;
     }
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Setup Header Light Theme */
+[data-theme="light"] .welcome-badge {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.08));
+    border-color: rgba(79, 70, 229, 0.2);
+    color: #4f46e5;
+}
+
+[data-theme="light"] .setup-title {
+    background: linear-gradient(135deg, #1a1a2e 0%, #4f46e5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+[data-theme="light"] .setup-subtitle {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* User Stats Card Light Theme */
+[data-theme="light"] .user-stats-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .stat-value {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .stat-label {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Mode Card Light Theme */
+[data-theme="light"] .mode-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .mode-card:hover {
+    border-color: rgba(79, 70, 229, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .mode-card.selected {
+    border-color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+}
+
+[data-theme="light"] .mode-name {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .mode-desc {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .feature-tag {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .mode-card.selected .feature-tag {
+    background: rgba(79, 70, 229, 0.15);
+    color: #4f46e5;
+}
+
+/* Video Mode Info Light Theme */
+[data-theme="light"] .video-mode-info {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(124, 58, 237, 0.04) 100%);
+    border-color: rgba(79, 70, 229, 0.15);
+}
+
+[data-theme="light"] .info-header {
+    color: #4f46e5;
+}
+
+[data-theme="light"] .info-list li {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .camera-permission-note {
+    background: rgba(5, 150, 105, 0.08);
+    color: #059669;
+}
+
+/* Form Group Light Theme */
+[data-theme="light"] .form-label {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .label-hint {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Company Grid Light Theme */
+[data-theme="light"] .company-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .company-card:hover {
+    border-color: rgba(79, 70, 229, 0.35);
+}
+
+[data-theme="light"] .company-card.selected {
+    border-color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+}
+
+[data-theme="light"] .company-name {
+    color: #1a1a2e;
+}
+
+/* Difficulty Grid Light Theme */
+[data-theme="light"] .difficulty-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .difficulty-card:hover {
+    border-color: rgba(79, 70, 229, 0.35);
+}
+
+[data-theme="light"] .difficulty-card.selected {
+    border-color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+}
+
+[data-theme="light"] .difficulty-name {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .difficulty-desc {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* Options Light Theme */
+[data-theme="light"] .question-option,
+[data-theme="light"] .duration-option {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .question-option:hover,
+[data-theme="light"] .duration-option:hover {
+    border-color: rgba(79, 70, 229, 0.35);
+}
+
+[data-theme="light"] .question-option.selected,
+[data-theme="light"] .duration-option.selected {
+    border-color: #4f46e5;
+    background: rgba(79, 70, 229, 0.08);
+    color: #4f46e5;
+}
+
+/* File Upload Light Theme */
+[data-theme="light"] .file-upload-area {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .file-upload-area:hover {
+    border-color: rgba(79, 70, 229, 0.4);
+    background: rgba(79, 70, 229, 0.03);
+}
+
+[data-theme="light"] .file-upload-text {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .file-upload-hint {
+    color: rgba(26, 26, 46, 0.4);
+}
+
+/* Setup Tip Light Theme */
+[data-theme="light"] .setup-tip {
+    color: rgba(26, 26, 46, 0.5);
+}

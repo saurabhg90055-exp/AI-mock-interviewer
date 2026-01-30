@@ -365,3 +365,76 @@
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Level Progress Light Theme */
+[data-theme="light"] .level-progress-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .level-number {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .xp-text {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+[data-theme="light"] .level-progress-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Achievement Badge Light Theme */
+[data-theme="light"] .achievement-badge.locked {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .badge-tooltip {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .badge-tooltip h4 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .badge-tooltip p {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* Streak Counter Light Theme */
+[data-theme="light"] .streak-counter {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .streak-icon {
+    color: rgba(26, 26, 46, 0.4);
+}
+
+[data-theme="light"] .streak-info .streak-count {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .streak-info .streak-label {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Stats Widget Light Theme */
+[data-theme="light"] .stats-widget {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .stat-content .stat-value {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .stat-content .stat-label {
+    color: rgba(26, 26, 46, 0.5);
+}

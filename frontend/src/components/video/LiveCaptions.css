@@ -362,3 +362,39 @@
         max-width: calc(100vw - 32px);
     }
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+[data-theme="light"] .captions-display.bg-dark {
+    background: rgba(26, 26, 46, 0.9);
+}
+
+[data-theme="light"] .history-time {
+    color: rgba(26, 26, 46, 0.4);
+}
+
+[data-theme="light"] .history-text {
+    color: rgba(26, 26, 46, 0.8);
+}
+
+[data-theme="light"] .captions-settings {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .settings-title {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .setting-label {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+[data-theme="light"] .transcript-history {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .transcript-history::-webkit-scrollbar-thumb {
+    background: rgba(79, 70, 229, 0.3);
+}

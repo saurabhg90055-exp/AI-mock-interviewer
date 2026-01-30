@@ -449,3 +449,107 @@
         width: 100%;
     }
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+/* Summary Header Light Theme */
+[data-theme="light"] .summary-header h1 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .summary-header p {
+    color: rgba(26, 26, 46, 0.7);
+}
+
+/* Score Circle Light Theme */
+[data-theme="light"] .score-bg {
+    stroke: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .score-value {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .score-label {
+    color: rgba(26, 26, 46, 0.6);
+}
+
+/* XP Earned Card Light Theme */
+[data-theme="light"] .xp-earned-card {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Stats Card Light Theme */
+[data-theme="light"] .stat-card {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .stat-icon {
+    color: #4f46e5;
+}
+
+[data-theme="light"] .stat-info .value {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .stat-info .label {
+    color: rgba(26, 26, 46, 0.5);
+}
+
+/* Detail Card Light Theme */
+[data-theme="light"] .detail-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .detail-header h3 {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .detail-content {
+    color: #374151;
+}
+
+/* Feedback Card Light Theme */
+[data-theme="light"] .feedback-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .question-text {
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .answer-text {
+    color: #374151;
+    border-left-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .feedback-text {
+    background: rgba(79, 70, 229, 0.06);
+    color: #374151;
+}
+
+/* Action Buttons Light Theme */
+[data-theme="light"] .action-btn.secondary {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1a1a2e;
+}
+
+[data-theme="light"] .action-btn.secondary:hover {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Guest Notice Light Theme */
+[data-theme="light"] .guest-notice {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.08));
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+[data-theme="light"] .guest-notice p {
+    color: rgba(26, 26, 46, 0.8);
+}

@@ -167,3 +167,24 @@
     width: calc(100vw - 20px);
   }
 }
+
+/* ============== LIGHT THEME SUPPORT ============== */
+
+[data-theme="light"] .toast {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .toast-message {
+  color: #374151;
+}
+
+[data-theme="light"] .toast-close {
+  color: #9ca3af;
+}
+
+[data-theme="light"] .toast-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1a1a2e;
+}
