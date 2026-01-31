@@ -1,5 +1,6 @@
 // Avatar Components
 export { default as AIAvatar } from './avatar/AIAvatar';
+export { default as Avatar3D } from './avatar/Avatar3D';
 
 // Audio Components
 export { default as AudioVisualizer } from './audio/AudioVisualizer';

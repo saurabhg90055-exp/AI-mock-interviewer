@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // New enhanced components
-import { AIAvatar } from "./components/avatar";
+import { AIAvatar, Avatar3D } from "./components/avatar";
 import { AudioVisualizer } from "./components/audio";
 import { RecordButton, Toast, ScoreDisplay, ScoreBadge, TypingIndicator } from "./components/ui";
 import { VideoInterview, VideoPreview, VideoInterviewSummary } from "./components/video";
@@ -2008,11 +2008,13 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
             >
-                <AIAvatar 
+                {/* 3D Avatar with GLB model - fallback to 2D if WebGL unavailable */}
+                <Avatar3D 
                     state={avatarState}
                     audioLevel={audioLevel}
                     score={currentScore}
                     size="large"
+                    interviewerName="ARIA"
                 />
                 {isSpeaking && (
                     <AudioVisualizer 

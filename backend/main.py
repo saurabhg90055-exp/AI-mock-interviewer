@@ -102,6 +102,76 @@ async def health_check():
 # Store active interview sessions (in production, use Redis)
 interview_sessions = {}
 
+# Language code mapping for Whisper and TTS
+LANGUAGE_CODES = {
+    'en-US': 'en', 'en-GB': 'en', 'en-IN': 'en',
+    'es-ES': 'es', 'es-MX': 'es',
+    'fr-FR': 'fr',
+    'de-DE': 'de',
+    'it-IT': 'it',
+    'pt-BR': 'pt', 'pt-PT': 'pt',
+    'ru-RU': 'ru',
+    'ja-JP': 'ja',
+    'ko-KR': 'ko',
+    'zh-CN': 'zh', 'zh-TW': 'zh',
+    'ar-SA': 'ar',
+    'hi-IN': 'hi',
+    'ta-IN': 'ta',
+    'te-IN': 'te',
+    'bn-IN': 'bn',
+    'mr-IN': 'mr',
+    'gu-IN': 'gu',
+    'kn-IN': 'kn',
+    'ml-IN': 'ml',
+    'pa-IN': 'pa',
+    'or-IN': 'or',
+    'ur-PK': 'ur',
+    'nl-NL': 'nl',
+    'pl-PL': 'pl',
+    'tr-TR': 'tr',
+    'vi-VN': 'vi',
+    'th-TH': 'th',
+    'id-ID': 'id',
+    'ms-MY': 'ms',
+    'he-IL': 'he',
+    'sv-SE': 'sv',
+    'da-DK': 'da',
+    'fi-FI': 'fi',
+    'no-NO': 'no',
+    'uk-UA': 'uk',
+    'cs-CZ': 'cs',
+    'el-GR': 'el',
+    'ro-RO': 'ro',
+    'hu-HU': 'hu',
+    'fil-PH': 'tl',
+    'ne-NP': 'ne',
+    'si-LK': 'si'
+}
+
+# Language-specific interview prompts
+LANGUAGE_PROMPTS = {
+    'hi': "आप एक पेशेवर AI साक्षात्कारकर्ता हैं। कृपया हिंदी में जवाब दें।",
+    'ta': "நீங்கள் ஒரு தொழில்முறை AI நேர்காணல் எடுப்பவர். தமிழில் பதிலளிக்கவும்.",
+    'te': "మీరు ఒక ప్రొఫెషనల్ AI ఇంటర్వ్యూయర్. దయచేసి తెలుగులో సమాధానం ఇవ్వండి.",
+    'bn': "আপনি একজন পেশাদার AI সাক্ষাৎকার গ্রহণকারী। দয়া করে বাংলায় উত্তর দিন।",
+    'mr': "तुम्ही एक व्यावसायिक AI मुलाखतकार आहात. कृपया मराठीत उत्तर द्या.",
+    'gu': "તમે એક વ્યાવસાયિક AI ઇન્ટરવ્યુઅર છો. કૃપા કરીને ગુજરાતીમાં જવાબ આપો.",
+    'kn': "ನೀವು ವೃತ್ತಿಪರ AI ಸಂದರ್ಶಕರು. ದಯವಿಟ್ಟು ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ.",
+    'ml': "നിങ്ങൾ ഒരു പ്രൊഫഷണൽ AI ഇന്റർവ്യൂവർ ആണ്. ദയവായി മലയാളത്തിൽ ഉത്തരം നൽകുക.",
+    'pa': "ਤੁਸੀਂ ਇੱਕ ਪੇਸ਼ੇਵਰ AI ਇੰਟਰਵਿਊਅਰ ਹੋ। ਕਿਰਪਾ ਕਰਕੇ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ।",
+    'ur': "آپ ایک پیشہ ور AI انٹرویو لینے والے ہیں۔ براہ کرم اردو میں جواب دیں۔",
+    'es': "Eres un entrevistador de IA profesional. Por favor responde en español.",
+    'fr': "Vous êtes un intervieweur IA professionnel. Veuillez répondre en français.",
+    'de': "Sie sind ein professioneller KI-Interviewer. Bitte antworten Sie auf Deutsch.",
+    'ja': "あなたはプロのAIインタビュアーです。日本語で回答してください。",
+    'ko': "당신은 전문 AI 인터뷰어입니다. 한국어로 대답해 주세요.",
+    'zh': "你是一位专业的AI面试官。请用中文回答。",
+    'ar': "أنت محاور ذكاء اصطناعي محترف. الرجاء الرد باللغة العربية.",
+    'ru': "Вы профессиональный AI-интервьюер. Пожалуйста, отвечайте на русском языке.",
+    'pt': "Você é um entrevistador de IA profissional. Por favor, responda em português.",
+    'it': "Sei un intervistatore AI professionale. Per favore rispondi in italiano.",
+}
+
 # Company interview styles with enhanced personality
 COMPANY_STYLES = {
     "google": {
@@ -300,6 +370,7 @@ class InterviewSession(BaseModel):
     resume_text: Optional[str] = None
     duration_minutes: int = 30
     mode: str = "audio"  # 'audio' | 'video'
+    language: str = "en-US"  # Interview language code
 
 
 class Message(BaseModel):
@@ -724,6 +795,19 @@ IMPORTANT INSTRUCTIONS:
 - Adapt your next question difficulty based on their performance
 - Use natural speech patterns with fillers like "I see...", "Interesting!", "Let me ask you about..."
 - Vary your tone: be encouraging after good answers, gently redirecting after weak ones"""
+
+    # Add language-specific prompt if not English
+    whisper_lang = LANGUAGE_CODES.get(session.language, 'en')
+    if whisper_lang != 'en' and whisper_lang in LANGUAGE_PROMPTS:
+        full_system_prompt += f"""
+
+═══════════════════════════════════════════════════════════
+LANGUAGE REQUIREMENT - CRITICAL
+═══════════════════════════════════════════════════════════
+{LANGUAGE_PROMPTS[whisper_lang]}
+You MUST conduct this entire interview in the specified language.
+All questions, feedback, and responses should be in this language.
+═══════════════════════════════════════════════════════════"""
     
     # Create personalized opening message
     candidate_name = "there"
@@ -796,6 +880,8 @@ IMPORTANT INSTRUCTIONS:
         "has_job_description": bool(session.job_description),
         "user_id": user_id,
         "mode": session.mode,
+        "language": session.language,
+        "whisper_lang": whisper_lang,
         # Video mode specific data
         "expression_history": [],
         "video_metrics": {
@@ -861,14 +947,17 @@ async def analyze_audio(
         with open(temp_filename, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Transcribe audio
-        print("Transcribing...")
+        # Get language for transcription from session
+        whisper_lang = session.get("whisper_lang", "en")
+        
+        # Transcribe audio with correct language
+        print(f"Transcribing in {whisper_lang}...")
         with open(temp_filename, "rb") as audio_file:
             transcription = client.audio.transcriptions.create(
                 file=(temp_filename, audio_file.read()),
                 model="whisper-large-v3",
                 response_format="json",
-                language="en",
+                language=whisper_lang,
                 temperature=0.0 
             )
         user_text = transcription.text

@@ -6,7 +6,7 @@ import {
     AlertCircle, CheckCircle, TrendingUp, Brain,
     MessageSquare, Clock, Zap, Monitor, Subtitles, Download
 } from 'lucide-react';
-import { AIAvatar } from '../avatar';
+import { AIAvatar, Avatar3D } from '../avatar';
 import { AudioVisualizer } from '../audio';
 import { TypingIndicator } from '../ui';
 import ExpressionIndicator from './ExpressionIndicator';
@@ -437,15 +437,14 @@ const VideoInterview = ({
             <div className="video-main">
                 {/* AI Interviewer Side */}
                 <div className="interviewer-panel">
-                    <div className="avatar-container">
-                        <AIAvatar 
-                            state={avatarState}
-                            audioLevel={isSpeaking ? 0.5 : 0}
+                    <div className="avatar-container avatar-container-video">
+                        <Avatar3D 
+                            state={isSpeaking ? 'speaking' : avatarState}
+                            audioLevel={isSpeaking ? 0.6 : 0}
                             score={currentScore}
-                            size="medium"
+                            size="video"
                             userExpression={expressionData}
-                            videoMode={true}
-                            showFeedback={!isRecording && !isProcessing && !isSpeaking}
+                            isSpeaking={isSpeaking}
                         />
                     </div>
                     
