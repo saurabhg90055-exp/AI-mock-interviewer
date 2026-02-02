@@ -40,8 +40,25 @@ button svg,
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--color-background, linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%));
+  background: transparent;
   color: var(--color-text, var(--text-primary));
+  position: relative;
+}
+
+/* Global text visibility improvements */
+.app-container h1,
+.app-container h2,
+.app-container h3,
+.app-container h4,
+.app-container h5,
+.app-container h6 {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.app-container p,
+.app-container span,
+.app-container label {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 /* App Header */
@@ -50,9 +67,9 @@ button svg,
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: var(--color-surface, rgba(0, 0, 0, 0.3));
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  background: rgba(5, 5, 16, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -303,6 +320,8 @@ button svg,
 .welcome-section {
   text-align: center;
   margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .main-title {
@@ -310,27 +329,30 @@ button svg,
   font-weight: 800;
   line-height: 1.2;
   margin-bottom: 1rem;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.9) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .highlight-text {
-  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #818cf8 0%, #f472b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  filter: drop-shadow(0 4px 15px rgba(99, 102, 241, 0.4));
 }
 
 .main-subtitle {
   font-size: 1.1rem;
-  color: var(--color-textMuted, rgba(255, 255, 255, 0.6));
+  color: rgba(255, 255, 255, 0.85);
   max-width: 500px;
   margin: 0 auto;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 /* Achievements View */

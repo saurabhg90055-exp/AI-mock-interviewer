@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import AudioRecorder from './AudioRecorder';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import ConfettiCelebration, { useConfetti } from './components/effects/ConfettiCelebration';
+import { AnimatedBlob } from './components/effects';
 import SettingsPanel from './components/settings/SettingsPanel';
 import { useXPSystem, LevelProgressBar, XPGainPopup, AchievementUnlock } from './components/gamification/XPSystem';
 import Dashboard from './components/dashboard/Dashboard';
@@ -133,6 +134,13 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      {/* Global Animated Background */}
+      <AnimatedBlob 
+        global={true} 
+        variant={currentView === 'landing' ? 'landing' : 'blurred'}
+        enableScrollBlur={currentView === 'landing'}
+      />
+
       {/* Navigation Header */}
       <header className="app-header">
         <motion.div 

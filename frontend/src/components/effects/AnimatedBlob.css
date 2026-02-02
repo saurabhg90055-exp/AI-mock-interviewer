@@ -1,0 +1,306 @@
+/* Animated Blob Background - Optimized for Performance */
+
+.animated-blob-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index: -1;
+    background: linear-gradient(135deg, #030308 0%, #0a0a1a 50%, #050510 100%);
+    pointer-events: none;
+    will-change: filter, opacity;
+}
+
+.animated-blob-container.global-background {
+    z-index: 0;
+}
+
+/* Variant styles */
+.animated-blob-container.variant-landing {
+    transition: filter 0.3s ease-out;
+}
+
+.animated-blob-container.variant-blurred {
+    transition: filter 0.3s ease-out;
+}
+
+/* Blob Wrapper */
+.blob-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vmin;
+    height: 70vmin;
+}
+
+/* Blob layers - pure CSS morphing animation */
+.blob-layer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    will-change: border-radius, transform;
+}
+
+.blob-outer {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 30% 30%, 
+        rgba(0, 255, 255, 0.15) 0%, 
+        rgba(138, 43, 226, 0.1) 40%, 
+        transparent 70%);
+    animation: blob-morph-1 15s ease-in-out infinite;
+    filter: blur(30px);
+}
+
+.blob-middle {
+    width: 85%;
+    height: 85%;
+    background: radial-gradient(ellipse at 60% 40%, 
+        rgba(0, 200, 255, 0.2) 0%, 
+        rgba(180, 50, 200, 0.12) 50%, 
+        transparent 70%);
+    animation: blob-morph-2 12s ease-in-out infinite;
+    filter: blur(20px);
+}
+
+.blob-inner {
+    width: 65%;
+    height: 65%;
+    background: radial-gradient(ellipse at 50% 50%, 
+        rgba(0, 255, 200, 0.25) 0%, 
+        rgba(200, 100, 255, 0.15) 50%, 
+        transparent 70%);
+    animation: blob-morph-3 10s ease-in-out infinite;
+    filter: blur(15px);
+}
+
+.blob-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40%;
+    height: 40%;
+    background: radial-gradient(ellipse at 50% 50%, 
+        rgba(100, 255, 255, 0.3) 0%, 
+        rgba(200, 150, 255, 0.2) 40%,
+        transparent 70%);
+    border-radius: 50%;
+    animation: blob-pulse 8s ease-in-out infinite;
+    filter: blur(10px);
+}
+
+/* Glow effects container */
+.blob-glow-effects {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    will-change: transform;
+}
+
+.glow-cyan {
+    top: 20%;
+    left: 20%;
+    width: 35vmin;
+    height: 35vmin;
+    background: radial-gradient(circle, rgba(0, 255, 255, 0.2) 0%, transparent 70%);
+    animation: glow-float-1 18s ease-in-out infinite;
+}
+
+.glow-purple {
+    top: 50%;
+    right: 15%;
+    width: 40vmin;
+    height: 40vmin;
+    background: radial-gradient(circle, rgba(138, 43, 226, 0.18) 0%, transparent 70%);
+    animation: glow-float-2 20s ease-in-out infinite;
+}
+
+.glow-pink {
+    bottom: 15%;
+    left: 30%;
+    width: 30vmin;
+    height: 30vmin;
+    background: radial-gradient(circle, rgba(255, 100, 150, 0.15) 0%, transparent 70%);
+    animation: glow-float-3 16s ease-in-out infinite;
+}
+
+/* Particles */
+.blob-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(100, 255, 255, 0.5);
+    border-radius: 50%;
+    animation: particle-float 10s ease-in-out infinite;
+    will-change: transform, opacity;
+}
+
+.particle:nth-child(2n) {
+    background: rgba(200, 100, 255, 0.5);
+}
+
+.particle:nth-child(3n) {
+    background: rgba(255, 150, 200, 0.4);
+}
+
+/* ===== KEYFRAME ANIMATIONS ===== */
+
+@keyframes blob-morph-1 {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(-50%, -50%) rotate(0deg); }
+    25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(-50%, -50%) rotate(90deg); }
+    50% { border-radius: 50% 60% 30% 60% / 30% 40% 70% 50%; transform: translate(-50%, -50%) rotate(180deg); }
+    75% { border-radius: 40% 50% 60% 30% / 60% 50% 40% 60%; transform: translate(-50%, -50%) rotate(270deg); }
+}
+
+@keyframes blob-morph-2 {
+    0%, 100% { border-radius: 40% 60% 60% 40% / 70% 30% 50% 60%; transform: translate(-50%, -50%) rotate(0deg); }
+    33% { border-radius: 60% 40% 30% 60% / 40% 60% 50% 40%; transform: translate(-50%, -50%) rotate(120deg); }
+    66% { border-radius: 50% 30% 50% 60% / 60% 50% 30% 50%; transform: translate(-50%, -50%) rotate(240deg); }
+}
+
+@keyframes blob-morph-3 {
+    0%, 100% { border-radius: 50% 50% 40% 60% / 60% 40% 60% 40%; transform: translate(-50%, -50%) scale(1); }
+    50% { border-radius: 40% 60% 60% 40% / 40% 60% 40% 60%; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+@keyframes blob-pulse {
+    0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes glow-float-1 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(10%, 15%); }
+    66% { transform: translate(-5%, -10%); }
+}
+
+@keyframes glow-float-2 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(-15%, 10%); }
+    66% { transform: translate(10%, -5%); }
+}
+
+@keyframes glow-float-3 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(15%, -10%); }
+    66% { transform: translate(-10%, 15%); }
+}
+
+@keyframes particle-float {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+    25% { transform: translateY(-30px) scale(1.2); opacity: 0.6; }
+    50% { transform: translateY(-15px) scale(0.8); opacity: 0.4; }
+    75% { transform: translateY(-25px) scale(1.1); opacity: 0.5; }
+}
+
+/* ===== LIGHT THEME ===== */
+[data-theme="light"] .animated-blob-container {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8edf5 50%, #f0f4f8 100%);
+}
+
+[data-theme="light"] .blob-outer {
+    background: radial-gradient(ellipse at 30% 30%, 
+        rgba(0, 180, 220, 0.12) 0%, 
+        rgba(120, 80, 200, 0.08) 40%, 
+        transparent 70%);
+}
+
+[data-theme="light"] .blob-middle {
+    background: radial-gradient(ellipse at 60% 40%, 
+        rgba(0, 150, 200, 0.15) 0%, 
+        rgba(150, 100, 180, 0.1) 50%, 
+        transparent 70%);
+}
+
+[data-theme="light"] .blob-inner {
+    background: radial-gradient(ellipse at 50% 50%, 
+        rgba(0, 200, 180, 0.18) 0%, 
+        rgba(180, 120, 220, 0.12) 50%, 
+        transparent 70%);
+}
+
+[data-theme="light"] .blob-core {
+    background: radial-gradient(ellipse at 50% 50%, 
+        rgba(80, 200, 220, 0.22) 0%, 
+        rgba(160, 130, 220, 0.15) 40%,
+        transparent 70%);
+}
+
+[data-theme="light"] .glow-cyan {
+    background: radial-gradient(circle, rgba(0, 180, 220, 0.15) 0%, transparent 70%);
+}
+
+[data-theme="light"] .glow-purple {
+    background: radial-gradient(circle, rgba(120, 80, 200, 0.12) 0%, transparent 70%);
+}
+
+[data-theme="light"] .glow-pink {
+    background: radial-gradient(circle, rgba(220, 100, 150, 0.1) 0%, transparent 70%);
+}
+
+[data-theme="light"] .particle {
+    background: rgba(0, 180, 220, 0.35);
+}
+
+[data-theme="light"] .particle:nth-child(2n) {
+    background: rgba(140, 80, 200, 0.35);
+}
+
+[data-theme="light"] .particle:nth-child(3n) {
+    background: rgba(220, 120, 180, 0.3);
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    .blob-outer, .blob-middle, .blob-inner, .blob-core,
+    .glow-orb, .particle {
+        animation: none;
+    }
+    
+    .blob-outer, .blob-middle, .blob-inner {
+        border-radius: 50%;
+    }
+}
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+@media (max-width: 768px) {
+    .blob-wrapper {
+        width: 90vmin;
+        height: 90vmin;
+    }
+    
+    .glow-orb {
+        filter: blur(40px);
+    }
+    
+    .blob-outer, .blob-middle, .blob-inner {
+        filter: blur(20px);
+    }
+    
+    .particle {
+        width: 3px;
+        height: 3px;
+    }
+}
