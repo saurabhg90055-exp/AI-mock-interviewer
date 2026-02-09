@@ -18,26 +18,128 @@ function AvatarModel({
 }) {
   const group = useRef();
   
-  // Select model based on gender
+  // Select model based on gender with cache-busting
   const modelPath = gender === 'female' 
-    ? '/models/avatar/interviewer-female.glb' 
-    : '/models/avatar/interviewer.glb';
+    ? '/models/avatar/interviewer-female.glb?v=2' 
+    : '/models/avatar/interviewer-male.glb?v=2';
+  
+  console.log('[AvatarModel] Rendering with gender:', gender, 'modelPath:', modelPath);
   
   const { scene } = useGLTF(modelPath);
+  
+  // Debug: Log when scene changes
+  useEffect(() => {
+    console.log('[AvatarModel] Scene loaded/changed:', { 
+      gender, 
+      modelPath, 
+      sceneUuid: scene?.uuid,
+      sceneName: scene?.name,
+      childrenCount: scene?.children?.length 
+    });
+  }, [scene, gender, modelPath]);
+  
   const mouthOpenRef = useRef(0);
   const lastBlinkTime = useRef(0);
   const smoothedAudioLevel = useRef(0);
   
-  // Clone the scene for safe manipulation
+  // Lip sync state refs
+  const currentVisemeRef = useRef(0);
+  const visemeBlendRef = useRef({});
+  const lastVisemeChange = useRef(0);
+  
+  /**
+   * VISEME DEFINITIONS - Standard ARKit/ReadyPlayerMe visemes
+   * Each viseme has morph target weights for realistic mouth shapes
+   */
+  const VISEMES = {
+    sil: { // Silence - mouth closed
+      jawOpen: 0, mouthOpen: 0, viseme_sil: 1,
+      mouthPucker: 0, mouthFunnel: 0
+    },
+    PP: { // P, B, M - lips pressed
+      jawOpen: 0, mouthOpen: 0, viseme_PP: 1,
+      mouthPucker: 0.6, mouthFunnel: 0, mouthPress: 0.8
+    },
+    FF: { // F, V - lower lip to teeth
+      jawOpen: 0.15, mouthOpen: 0.1, viseme_FF: 1,
+      mouthFunnel: 0.4, mouthLowerDownLeft: 0.3, mouthLowerDownRight: 0.3
+    },
+    TH: { // TH sounds - tongue to teeth
+      jawOpen: 0.2, mouthOpen: 0.15, viseme_TH: 1,
+      mouthFunnel: 0.2
+    },
+    DD: { // D, T, N - tongue to ridge
+      jawOpen: 0.25, mouthOpen: 0.2, viseme_DD: 1,
+      mouthStretchLeft: 0.2, mouthStretchRight: 0.2
+    },
+    kk: { // K, G - back of tongue
+      jawOpen: 0.3, mouthOpen: 0.25, viseme_kk: 1,
+      mouthStretchLeft: 0.15, mouthStretchRight: 0.15
+    },
+    CH: { // CH, J, SH - fricatives
+      jawOpen: 0.25, mouthOpen: 0.2, viseme_CH: 1,
+      mouthFunnel: 0.5, mouthPucker: 0.3
+    },
+    SS: { // S, Z - sibilants
+      jawOpen: 0.2, mouthOpen: 0.15, viseme_SS: 1,
+      mouthStretchLeft: 0.25, mouthStretchRight: 0.25
+    },
+    nn: { // N - nasal
+      jawOpen: 0.2, mouthOpen: 0.1, viseme_nn: 1,
+      mouthClose: 0.4
+    },
+    RR: { // R - retroflex
+      jawOpen: 0.25, mouthOpen: 0.2, viseme_RR: 1,
+      mouthFunnel: 0.3, mouthPucker: 0.2
+    },
+    aa: { // A as in "father" - wide open
+      jawOpen: 0.7, mouthOpen: 0.65, viseme_aa: 1,
+      mouthStretchLeft: 0.3, mouthStretchRight: 0.3
+    },
+    E: { // E as in "bed" - mid open
+      jawOpen: 0.45, mouthOpen: 0.4, viseme_E: 1,
+      mouthStretchLeft: 0.4, mouthStretchRight: 0.4, mouthSmile: 0.2
+    },
+    I: { // I as in "bee" - smile shape
+      jawOpen: 0.3, mouthOpen: 0.25, viseme_I: 1,
+      mouthSmileLeft: 0.5, mouthSmileRight: 0.5, mouthStretchLeft: 0.3, mouthStretchRight: 0.3
+    },
+    O: { // O as in "go" - rounded
+      jawOpen: 0.45, mouthOpen: 0.4, viseme_O: 1,
+      mouthFunnel: 0.6, mouthPucker: 0.4
+    },
+    U: { // U as in "you" - pursed
+      jawOpen: 0.3, mouthOpen: 0.25, viseme_U: 1,
+      mouthPucker: 0.7, mouthFunnel: 0.5
+    }
+  };
+  
+  // Viseme sequence for natural speech patterns
+  const SPEECH_PATTERNS = [
+    ['sil', 'aa', 'E', 'sil'],
+    ['PP', 'aa', 'DD', 'E', 'sil'],
+    ['SS', 'E', 'nn', 'DD', 'aa'],
+    ['kk', 'O', 'nn', 'FF', 'E'],
+    ['TH', 'E', 'aa', 'RR', 'E'],
+    ['CH', 'aa', 'nn', 'SS', 'sil'],
+    ['I', 'nn', 'DD', 'E', 'E', 'DD'],
+    ['O', 'kk', 'aa', 'SS', 'E']
+  ];
+  
+  const speechPatternRef = useRef(0);
+  const patternIndexRef = useRef(0);
+  
+  // Clone the scene for safe manipulation - depend on scene, gender, and modelPath
   const clonedScene = useMemo(() => {
-    console.log('Loading GLB scene:', scene);
+    console.log('[AvatarModel] Creating clonedScene for gender:', gender, 'modelPath:', modelPath);
+    console.log('[AvatarModel] Scene object:', scene, 'Scene uuid:', scene?.uuid);
     const clone = scene.clone(true);
     
     // Debug: Calculate bounding box to understand model dimensions
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    console.log('Model dimensions:', { 
+    console.log('[AvatarModel] Model dimensions:', { 
       size: { x: size.x.toFixed(2), y: size.y.toFixed(2), z: size.z.toFixed(2) },
       center: { x: center.x.toFixed(2), y: center.y.toFixed(2), z: center.z.toFixed(2) }
     });
@@ -53,7 +155,7 @@ function AvatarModel({
       }
     });
     return clone;
-  }, [scene]);
+  }, [scene, gender, modelPath]);
 
   // Find head bone and all morph targets
   const { headBone, neckBone, morphMeshes, availableMorphs } = useMemo(() => {
@@ -147,54 +249,94 @@ function AvatarModel({
       headBone.rotation.z = THREE.MathUtils.lerp(headBone.rotation.z, targetRotZ, 0.1);
     }
     
-    // ============ LIP SYNC ANIMATION ============
-    // Calculate mouth open amount with variation for natural speech
-    // Check both isSpeaking prop and state === 'speaking' for robustness
+    // ============ ADVANCED LIP SYNC WITH VISEMES ============
     const shouldAnimate = isSpeaking || state === 'speaking';
-    let mouthTarget = 0;
+    
+    // Determine current viseme based on audio and timing
     if (shouldAnimate) {
-      // Increased base open and multipliers for more visible mouth movement
-      const baseOpen = 0.5 + smoothedAudioLevel.current * 0.6;
-      // Add phoneme-like variation for realistic speech
-      const variation1 = Math.sin(time * 12) * 0.25;
-      const variation2 = Math.sin(time * 20) * 0.15;
-      const variation3 = Math.sin(time * 7) * 0.1;
-      mouthTarget = Math.max(0.15, Math.min(1, baseOpen + variation1 + variation2 + variation3));
+      const visemeSpeed = 8 + smoothedAudioLevel.current * 6; // Faster when louder
+      const timeSinceChange = time - lastVisemeChange.current;
+      
+      // Change viseme based on audio rhythm
+      if (timeSinceChange > (1 / visemeSpeed)) {
+        lastVisemeChange.current = time;
+        
+        // Get current speech pattern
+        const pattern = SPEECH_PATTERNS[speechPatternRef.current % SPEECH_PATTERNS.length];
+        patternIndexRef.current = (patternIndexRef.current + 1) % pattern.length;
+        
+        // Move to next pattern when we complete current one
+        if (patternIndexRef.current === 0) {
+          speechPatternRef.current = (speechPatternRef.current + 1) % SPEECH_PATTERNS.length;
+        }
+        
+        currentVisemeRef.current = pattern[patternIndexRef.current];
+      }
+    } else {
+      currentVisemeRef.current = 'sil';
+      patternIndexRef.current = 0;
     }
     
-    // Smooth mouth movement - slightly faster response
-    mouthOpenRef.current = THREE.MathUtils.lerp(mouthOpenRef.current, mouthTarget, 0.4);
-    const mouthOpen = mouthOpenRef.current;
+    // Get target viseme weights
+    const targetViseme = VISEMES[currentVisemeRef.current] || VISEMES.sil;
+    const intensity = shouldAnimate ? (0.6 + smoothedAudioLevel.current * 0.5) : 0;
+    
+    // Smooth blend between visemes (co-articulation)
+    Object.keys(VISEMES.sil).forEach(key => {
+      const target = (targetViseme[key] || 0) * intensity;
+      visemeBlendRef.current[key] = THREE.MathUtils.lerp(
+        visemeBlendRef.current[key] || 0,
+        target,
+        0.35 // Blending speed for smooth transitions
+      );
+    });
     
     // ============ APPLY MORPH TARGETS ============
     morphMeshes.forEach(({ mesh, dict, influences }) => {
-      // --- JAW / MOUTH OPEN ---
-      // Try various common morph target names for mouth open
-      const mouthOpenTargets = [
-        'jawOpen', 'mouthOpen', 'viseme_aa', 'viseme_O', 'viseme_U',
-        'jawForward', 'mouthFunnel', 'mouthPucker'
-      ];
+      // --- APPLY VISEME MORPH TARGETS ---
+      // Map our viseme system to actual morph target names in the model
+      const morphMapping = {
+        jawOpen: ['jawOpen', 'mouthOpen'],
+        mouthOpen: ['mouthOpen'],
+        mouthPucker: ['mouthPucker', 'viseme_U'],
+        mouthFunnel: ['mouthFunnel', 'viseme_O'],
+        mouthStretchLeft: ['mouthStretchLeft', 'mouthStretch'],
+        mouthStretchRight: ['mouthStretchRight', 'mouthStretch'],
+        mouthSmileLeft: ['mouthSmileLeft', 'mouthSmile'],
+        mouthSmileRight: ['mouthSmileRight', 'mouthSmile'],
+        mouthSmile: ['mouthSmile'],
+        mouthPress: ['mouthPressLeft', 'mouthPressRight', 'mouthClose'],
+        mouthLowerDownLeft: ['mouthLowerDownLeft'],
+        mouthLowerDownRight: ['mouthLowerDownRight'],
+        mouthClose: ['mouthClose'],
+        viseme_sil: ['viseme_sil'],
+        viseme_PP: ['viseme_PP'],
+        viseme_FF: ['viseme_FF'],
+        viseme_TH: ['viseme_TH'],
+        viseme_DD: ['viseme_DD'],
+        viseme_kk: ['viseme_kk'],
+        viseme_CH: ['viseme_CH'],
+        viseme_SS: ['viseme_SS'],
+        viseme_nn: ['viseme_nn'],
+        viseme_RR: ['viseme_RR'],
+        viseme_aa: ['viseme_aa'],
+        viseme_E: ['viseme_E'],
+        viseme_I: ['viseme_I'],
+        viseme_O: ['viseme_O'],
+        viseme_U: ['viseme_U']
+      };
       
-      mouthOpenTargets.forEach(target => {
-        if (target in dict) {
-          // Increased weights for more visible mouth movement
-          let weight = mouthOpen;
-          if (target === 'jawOpen') {
-            weight = mouthOpen * 1.2; // Jaw opens wider
-          } else if (target === 'mouthOpen') {
-            weight = mouthOpen * 1.0;
-          } else if (target === 'viseme_aa') {
-            weight = mouthOpen * 1.1; // Wide open for 'aa' sound
-          } else if (target === 'viseme_O' || target === 'mouthFunnel') {
-            weight = mouthOpen * 0.8 * (1 + Math.sin(time * 18) * 0.3);
-          } else if (target === 'viseme_U' || target === 'mouthPucker') {
-            weight = mouthOpen * 0.6 * (1 + Math.sin(time * 22) * 0.3);
+      // Apply blended viseme weights
+      Object.entries(visemeBlendRef.current).forEach(([key, weight]) => {
+        const targets = morphMapping[key] || [key];
+        targets.forEach(target => {
+          if (target in dict) {
+            influences[dict[target]] = Math.min(1, weight);
           }
-          influences[dict[target]] = Math.min(1, weight);
-        }
+        });
       });
       
-      // --- SMILE ---
+      // --- SMILE (additive to visemes) ---
       const smileAmount = expression === 'happy' ? 0.5 : 
                           expression === 'encouraging' ? 0.35 : 
                           expression === 'impressed' ? 0.4 : 0.12;
@@ -256,11 +398,7 @@ function AvatarModel({
 
   return (
     <group ref={group} dispose={null}>
-      {/* 
-        ReadyPlayerMe avatars have head at approximately Y=1.5-1.7 in local coords
-        Camera is positioned at Y=1.6 (head height) and Z=0.8 (close to face)
-        Model at origin shows face directly to camera
-      */}
+      {/* Model at origin - camera positioned to view face */}
       <primitive 
         object={clonedScene} 
         scale={1.0}
@@ -273,20 +411,31 @@ function AvatarModel({
 
 /**
  * Camera controller to focus on face
- * Fixed position optimized for the avatar model
+ * Gender-specific camera positions for optimal framing
  */
-function CameraController() {
+function CameraController({ gender }) {
   const { camera } = useThree();
   const initialized = useRef(false);
   
+  useEffect(() => {
+    // Reset when gender changes
+    initialized.current = false;
+  }, [gender]);
+  
   useFrame(() => {
     if (!initialized.current) {
-      // Fixed camera position for face close-up
-      camera.position.set(-0.01, 1.68, 0.51);
-      camera.lookAt(0, 1.65, 0);
-      camera.fov = 45;
+      if (gender === 'female') {
+        // Female avatar camera position
+        camera.position.set(-0.016, 1.587, 0.688);
+        camera.lookAt(0.005, 1.532, -0.052);
+        camera.fov = 40;
+      } else {
+        // Male avatar camera position
+        camera.position.set(0.010, 1.722, 0.710);
+        camera.lookAt(-0.003, 1.622, -0.168);
+        camera.fov = 35;
+      }
       camera.updateProjectionMatrix();
-      
       initialized.current = true;
     }
   });
@@ -363,6 +512,9 @@ const Avatar3D = ({
   const [adaptiveState, setAdaptiveState] = useState(state);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Debug log for gender prop
+  console.log('[Avatar3D] Received gender prop:', gender);
 
   // Determine expression based on state and score
   const getExpression = () => {
@@ -445,12 +597,13 @@ const Avatar3D = ({
         transition={{ duration: 0.5 }}
       />
 
-      {/* 3D Canvas */}
+      {/* 3D Canvas - key forces full remount on gender change */}
       <div className="avatar3d-canvas-container">
         <Canvas
+          key={`canvas-${gender}`}
           camera={{ 
-            position: [0, 1.5, 1], // Will be adjusted by CameraController
-            fov: 40,
+            position: [0, 1.65, 0.7], // Initial position, adjusted by CameraController
+            fov: 35,
             near: 0.01,
             far: 100
           }}
@@ -473,7 +626,7 @@ const Avatar3D = ({
           
           {/* Key light - main face illumination from front-right */}
           <spotLight 
-            position={[2, 2, 3]} 
+            position={[1, 2.5, 2]} 
             angle={0.5} 
             penumbra={1} 
             intensity={1.8}
@@ -483,7 +636,7 @@ const Avatar3D = ({
           
           {/* Fill light - soften shadows from left */}
           <spotLight 
-            position={[-2, 1.5, 2]} 
+            position={[-1, 2, 1.5]} 
             angle={0.6} 
             penumbra={1} 
             intensity={0.9}
@@ -491,17 +644,18 @@ const Avatar3D = ({
           />
           
           {/* Top light for hair/head definition */}
-          <pointLight position={[0, 3, 1]} intensity={0.5} color="#ffffff" />
+          <pointLight position={[0, 2.5, 0.5]} intensity={0.5} color="#ffffff" />
           
           {/* Rim/Back light for depth separation */}
-          <pointLight position={[-1, 1.5, -2]} intensity={0.4} color="#ffeedd" />
+          <pointLight position={[-0.5, 1.8, -1]} intensity={0.4} color="#ffeedd" />
           
           {/* Colored accent light based on state - subtle */}
-          <pointLight position={[0, 1.6, 1]} intensity={0.25} color={glowColor} />
+          <pointLight position={[0, 1.7, 0.5]} intensity={0.25} color={glowColor} />
           
           <Suspense fallback={<LoadingFallback />}>
-            <CameraController />
+            <CameraController gender={gender} />
             <AvatarModel 
+              key={gender}
               state={adaptiveState}
               audioLevel={audioLevel}
               expression={expression}
@@ -644,7 +798,67 @@ const Avatar3D = ({
 };
 
 // Preload both male and female models
-useGLTF.preload('/models/avatar/interviewer.glb');
-useGLTF.preload('/models/avatar/interviewer-female.glb');
+useGLTF.preload('/models/avatar/interviewer-male.glb?v=2');
+useGLTF.preload('/models/avatar/interviewer-female.glb?v=2');
+
+/**
+ * Mini Avatar Preview - Compact version for selection UI
+ */
+export const AvatarPreview = ({ gender = 'male', isSelected = false }) => {
+  const modelPath = gender === 'female' 
+    ? '/models/avatar/interviewer-female.glb?v=2' 
+    : '/models/avatar/interviewer-male.glb?v=2';
+
+  return (
+    <div className={`avatar-preview-container ${isSelected ? 'selected' : ''} ${gender}`}>
+      <Canvas
+        key={`preview-${gender}`}
+        camera={{ position: [0, 1.6, 1.2], fov: 35 }}
+        style={{ background: 'transparent' }}
+        gl={{ antialias: true, alpha: true }}
+      >
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[1, 2, 2]} intensity={1} />
+        <spotLight position={[-1, 1.5, 1]} angle={0.5} intensity={0.8} />
+        <Suspense fallback={null}>
+          <PreviewModel key={gender} modelPath={modelPath} gender={gender} />
+          <Environment preset="apartment" background={false} />
+        </Suspense>
+      </Canvas>
+      <div className={`preview-glow ${gender}`} />
+    </div>
+  );
+};
+
+/**
+ * Simple preview model without animations
+ */
+function PreviewModel({ modelPath, gender }) {
+  const { scene } = useGLTF(modelPath);
+  const group = useRef();
+  
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone(true);
+    clone.traverse((child) => {
+      if (child.isMesh && child.material) {
+        child.material = child.material.clone();
+      }
+    });
+    return clone;
+  }, [scene, gender]);
+
+  // Gentle idle animation
+  useFrame((state) => {
+    if (group.current) {
+      group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.05;
+    }
+  });
+
+  return (
+    <group ref={group} position={[0, 0, 0]} scale={1}>
+      <primitive object={clonedScene} />
+    </group>
+  );
+}
 
 export default Avatar3D;

@@ -665,17 +665,14 @@ async def edge_text_to_speech(request: EdgeTTSRequest):
         # Create communicate instance for edge-tts
         communicate = edge_tts.Communicate(request.text, request.voice)
         
-        # Collect audio data in memory
-        audio_buffer = io.BytesIO()
-        
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_buffer.write(chunk["data"])
-        
-        audio_buffer.seek(0)
+        # Stream audio as it's generated for faster response
+        async def audio_stream():
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    yield chunk["data"]
         
         return StreamingResponse(
-            audio_buffer,
+            audio_stream(),
             media_type="audio/mpeg",
             headers={"Content-Disposition": "inline; filename=speech.mp3"}
         )
@@ -1606,7 +1603,18 @@ def get_session_status(session_id: str):
 def get_interview_time(session_id: str):
     """Get interview timer status"""
     if session_id not in interview_sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+        # Return default values for missing sessions (frontend will use local timer)
+        return {
+            "elapsed_seconds": 0,
+            "elapsed_formatted": "00:00",
+            "remaining_seconds": 1800,
+            "remaining_formatted": "30:00",
+            "duration_minutes": 30,
+            "progress_percent": 0,
+            "is_time_up": False,
+            "is_warning": False,
+            "session_exists": False
+        }
     
     session = interview_sessions[session_id]
     start_time = session.get("start_time", time.time())
@@ -1622,7 +1630,8 @@ def get_interview_time(session_id: str):
         "duration_minutes": duration_minutes,
         "progress_percent": min(100, (elapsed_seconds / (duration_minutes * 60)) * 100),
         "is_time_up": remaining_seconds <= 0,
-        "is_warning": remaining_seconds <= 300 and remaining_seconds > 0
+        "is_warning": remaining_seconds <= 300 and remaining_seconds > 0,
+        "session_exists": True
     }
 
 

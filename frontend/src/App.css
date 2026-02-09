@@ -4788,3 +4788,200 @@ input[type="file"].file-input::file-selector-button {
   color: inherit;
   stroke: currentColor;
 }
+
+/* ==========================================
+   INTERVIEWER SELECTION CARDS
+   With live 3D avatar preview
+   ========================================== */
+
+.interviewer-selection {
+  margin-top: 1.5rem;
+}
+
+.interviewer-selection label {
+  font-size: 1.1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.interviewer-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.interviewer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.interviewer-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(99, 102, 241, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.interviewer-card:hover::before {
+  opacity: 1;
+}
+
+/* Male card accent */
+.interviewer-card.male {
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+}
+
+.interviewer-card.male:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.interviewer-card.male.active {
+  border-color: var(--accent-color);
+  background: rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 40px var(--accent-glow), inset 0 0 30px rgba(59, 130, 246, 0.05);
+}
+
+/* Female card accent */
+.interviewer-card.female {
+  --accent-color: #ec4899;
+  --accent-glow: rgba(236, 72, 153, 0.3);
+}
+
+.interviewer-card.female:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.interviewer-card.female.active {
+  border-color: var(--accent-color);
+  background: rgba(236, 72, 153, 0.08);
+  box-shadow: 0 0 40px var(--accent-glow), inset 0 0 30px rgba(236, 72, 153, 0.05);
+}
+
+/* Avatar preview container */
+.interviewer-preview {
+  width: 140px;
+  height: 160px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+/* Interviewer info section */
+.interviewer-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+  z-index: 1;
+}
+
+.interviewer-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.interviewer-card.male .interviewer-name {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.interviewer-card.female .interviewer-name {
+  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.interviewer-role {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.interviewer-voice {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 0.25rem;
+}
+
+/* Selected badge */
+.selected-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  z-index: 2;
+}
+
+.interviewer-card.male .selected-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.interviewer-card.female .selected-badge {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .interviewer-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .interviewer-preview {
+    width: 120px;
+    height: 140px;
+  }
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .interviewer-card {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .interviewer-card.male.active {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="light"] .interviewer-card.female.active {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+[data-theme="light"] .interviewer-preview {
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.9) 0%, rgba(226, 232, 240, 0.8) 100%);
+}
+
+[data-theme="light"] .interviewer-role,
+[data-theme="light"] .interviewer-voice {
+  color: rgba(0, 0, 0, 0.5);
+}

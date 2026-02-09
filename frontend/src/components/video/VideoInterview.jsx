@@ -5,7 +5,7 @@ import {
     Phone, Settings, Maximize2, Minimize2, Eye, 
     AlertCircle, CheckCircle, TrendingUp, Brain,
     MessageSquare, Clock, Zap, Monitor, Subtitles, Download,
-    User, BarChart3
+    BarChart3
 } from 'lucide-react';
 import { AIAvatar, Avatar3D } from '../avatar';
 import { AudioVisualizer } from '../audio';
@@ -19,7 +19,6 @@ import RecordingDownload from './RecordingDownload';
 import LiveCaptions from './LiveCaptions';
 import LanguageSelector from './LanguageSelector';
 import ExpressionPanel from './ExpressionPanel';
-import PictureInPicture from './PictureInPicture';
 import useFaceDetection from '../../hooks/useFaceDetection';
 import useVideoRecording from '../../hooks/useVideoRecording';
 import './VideoInterview.css';
@@ -38,9 +37,13 @@ const VideoInterview = ({
     remainingTime,
     isTimeWarning,
     avatarState,
+    avatarInfo,
     settings,
     enableTTS
 }) => {
+    // Debug: Log avatarInfo received
+    console.log('[VideoInterview] avatarInfo:', avatarInfo);
+    
     // Video states
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [isMicOn, setIsMicOn] = useState(true);
@@ -72,7 +75,6 @@ const VideoInterview = ({
     const [networkQuality, setNetworkQuality] = useState(null);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [screenStream, setScreenStream] = useState(null);
-    const [showPiP, setShowPiP] = useState(true);
     const [showExpressionPanel, setShowExpressionPanel] = useState(true);
     
     // Refs
@@ -436,13 +438,6 @@ const VideoInterview = ({
                         {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
                     <button
-                        className={`icon-btn ${showPiP ? 'active' : ''}`}
-                        onClick={() => setShowPiP(!showPiP)}
-                        title={showPiP ? 'Hide Self View' : 'Show Self View'}
-                    >
-                        <User size={18} />
-                    </button>
-                    <button
                         className={`icon-btn ${showExpressionPanel ? 'active' : ''}`}
                         onClick={() => setShowExpressionPanel(!showExpressionPanel)}
                         title={showExpressionPanel ? 'Hide Expression Panel' : 'Show Expression Panel'}
@@ -452,19 +447,6 @@ const VideoInterview = ({
                 </div>
             </div>
             
-            {/* PictureInPicture Self-View */}
-            {showPiP && (
-                <PictureInPicture
-                    stream={stream}
-                    faceDetected={faceDetected}
-                    eyeContactScore={expressionData.eyeContact}
-                    initialPosition="bottom-right"
-                    initialSize="medium"
-                    showEyeGuide={true}
-                    isRecording={isRecording}
-                    onClose={() => setShowPiP(false)}
-                />
-            )}
             {/* Main Video Area */}
             <div className="video-main">
                 {/* AI Interviewer Side */}
@@ -477,19 +459,21 @@ const VideoInterview = ({
                             size="video"
                             userExpression={expressionData}
                             isSpeaking={isSpeaking}
+                            gender={avatarInfo?.gender || 'male'}
+                            interviewerName={avatarInfo?.name || 'ALEX'}
                         />
                     </div>
                     
                     <div className="interviewer-info">
-                        <h3>AI Interviewer</h3>
+                        <h3>{avatarInfo?.name || 'AI Interviewer'}</h3>
                         <span className={`status ${isSpeaking ? 'speaking' : 'idle'}`}>
                             {isSpeaking ? '🎙️ Speaking' : isProcessing ? '🤔 Thinking' : '👂 Listening'}
                         </span>
                     </div>
                     
-                    {/* Current Question Display */}
+                    {/* Current Question Display - hidden when transcript is open */}
                     <AnimatePresence>
-                        {conversationHistory.length > 0 && (
+                        {conversationHistory.length > 0 && !showTranscript && (
                             <motion.div 
                                 className="current-question"
                                 initial={{ opacity: 0, y: 10 }}
@@ -666,7 +650,7 @@ const VideoInterview = ({
                             </button>
                         </div>
                         <div className="transcript-content">
-                            {conversationHistory.slice(-4).map((msg, idx) => (
+                            {conversationHistory.map((msg, idx) => (
                                 <div key={idx} className={`transcript-msg ${msg.role}`}>
                                     <span className="msg-role">
                                         {msg.role === 'assistant' ? '🤖' : '👤'}

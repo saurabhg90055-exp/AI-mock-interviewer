@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Briefcase, Target, Zap, ChevronRight, Sparkles, Brain, Trophy, Star, Mic, Video, Camera, Eye, Shield } from 'lucide-react';
+import { Settings, Briefcase, Target, Zap, ChevronRight, Sparkles, Brain, Trophy, Star, Mic, Video, Camera, Eye, Shield, User } from 'lucide-react';
 import './InterviewSetup.css';
 
 const InterviewSetup = ({
@@ -12,6 +12,8 @@ const InterviewSetup = ({
     setSelectedDifficulty,
     interviewMode,
     setInterviewMode,
+    interviewerGender,
+    setInterviewerGender,
     topics,
     companies,
     difficulties,
@@ -181,6 +183,45 @@ const InterviewSetup = ({
                             </div>
                         </motion.div>
                     )}
+                </div>
+
+                {/* Interviewer Gender Selection */}
+                <div className="form-group">
+                    <label className="form-label">
+                        <User className="label-icon" />
+                        Interviewer
+                    </label>
+                    <div className="gender-grid">
+                        <motion.button
+                            className={`gender-card ${interviewerGender === 'male' ? 'selected' : ''}`}
+                            onClick={() => setInterviewerGender('male')}
+                            whileHover={{ scale: 1.03, y: -4 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            <div className="gender-icon-wrapper male">
+                                <span className="gender-emoji">👨‍💼</span>
+                            </div>
+                            <div className="gender-content">
+                                <span className="gender-name">Male Interviewer</span>
+                                <span className="gender-desc">Professional male AI interviewer</span>
+                            </div>
+                        </motion.button>
+
+                        <motion.button
+                            className={`gender-card ${interviewerGender === 'female' ? 'selected' : ''}`}
+                            onClick={() => setInterviewerGender('female')}
+                            whileHover={{ scale: 1.03, y: -4 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            <div className="gender-icon-wrapper female">
+                                <span className="gender-emoji">👩‍💼</span>
+                            </div>
+                            <div className="gender-content">
+                                <span className="gender-name">Female Interviewer</span>
+                                <span className="gender-desc">Professional female AI interviewer</span>
+                            </div>
+                        </motion.button>
+                    </div>
                 </div>
 
                 {/* Topic Selection */}

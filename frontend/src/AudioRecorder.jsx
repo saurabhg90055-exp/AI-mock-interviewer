@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // New enhanced components
-import { AIAvatar, Avatar3D } from "./components/avatar";
+import { AIAvatar, Avatar3D, AvatarPreview } from "./components/avatar";
 import { AudioVisualizer } from "./components/audio";
 import { RecordButton, Toast, ScoreDisplay, ScoreBadge, TypingIndicator } from "./components/ui";
 import { VideoInterview, VideoPreview, VideoInterviewSummary } from "./components/video";
@@ -33,9 +33,10 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     const [selectedDifficulty, setSelectedDifficulty] = useState("medium");
     const [selectedDuration, setSelectedDuration] = useState(30);
     const [interviewMode, setInterviewMode] = useState("audio"); // 'audio' | 'video'
+    const [interviewerGender, setInterviewerGender] = useState("male"); // 'male' | 'female'
     const [enableTTS, setEnableTTS] = useState(true);
     const [ttsEngine, setTtsEngine] = useState("edge"); // 'browser' | 'edge'
-    const [edgeVoice, setEdgeVoice] = useState("en-US-AriaNeural");
+    const [edgeVoice, setEdgeVoice] = useState("en-US-GuyNeural");
     const [topics, setTopics] = useState([]);
     const [companies, setCompanies] = useState([]);
     const [difficulties, setDifficulties] = useState([]);
@@ -113,16 +114,8 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     const [soundEnabled, setSoundEnabled] = useState(settings?.soundEffects ?? true);
     const [visualizerMode, setVisualizerMode] = useState('bars'); // 'bars' | 'wave' | 'circular' | 'orb'
     
-    // Determine avatar gender and name based on selected voice
+    // Determine avatar gender and name based on selected interviewer gender and voice
     const avatarInfo = useMemo(() => {
-        // Female voices from Edge TTS
-        const femaleVoices = [
-            'en-US-AriaNeural', 'en-US-JennyNeural', 'en-US-MichelleNeural',
-            'en-GB-SoniaNeural', 'en-AU-NatashaNeural', 'en-IN-NeerjaNeural'
-        ];
-        
-        const isFemale = femaleVoices.includes(edgeVoice);
-        
         // Get interviewer name from voice
         const voiceNames = {
             'en-US-AriaNeural': 'ARIA',
@@ -137,11 +130,22 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
             'en-US-EricNeural': 'ERIC'
         };
         
-        return {
-            gender: isFemale ? 'female' : 'male',
-            name: voiceNames[edgeVoice] || (isFemale ? 'ARIA' : 'ALEX')
+        const info = {
+            gender: interviewerGender,
+            name: voiceNames[edgeVoice] || (interviewerGender === 'female' ? 'ARIA' : 'ALEX')
         };
-    }, [edgeVoice]);
+        console.log('[AudioRecorder] avatarInfo computed:', info, 'interviewerGender:', interviewerGender);
+        return info;
+    }, [edgeVoice, interviewerGender]);
+    
+    // Set default voice when interviewer gender changes
+    useEffect(() => {
+        if (interviewerGender === 'female') {
+            setEdgeVoice('en-US-AriaNeural');
+        } else {
+            setEdgeVoice('en-US-GuyNeural');
+        }
+    }, [interviewerGender]);
     
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]);
@@ -205,32 +209,51 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [conversationHistory]);
 
-    // Interview timer
+    // Interview timer - local fallback when backend is unavailable
+    const timerStartRef = useRef(null);
+    
     useEffect(() => {
         if (interviewStarted && sessionId) {
+            // Initialize start time for local fallback
+            if (!timerStartRef.current) {
+                timerStartRef.current = Date.now();
+            }
+            
             timerIntervalRef.current = setInterval(async () => {
                 try {
                     const response = await fetch(`${API_URL}/interview/${sessionId}/time`);
                     if (!response.ok) {
-                        // Session might have ended, stop polling
-                        clearInterval(timerIntervalRef.current);
+                        // Use local timer as fallback
+                        const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000);
+                        const remaining = Math.max(0, (selectedDuration * 60) - elapsed);
+                        setElapsedTime(elapsed);
+                        setRemainingTime(remaining);
+                        setIsTimeWarning(remaining <= 300 && remaining > 0);
+                        setIsTimeUp(remaining <= 0);
                         return;
                     }
                     const data = await response.json();
                     setElapsedTime(data.elapsed_seconds);
                     setRemainingTime(data.remaining_seconds);
                     setIsTimeWarning(data.is_warning);
-
                     setIsTimeUp(data.is_time_up);
                 } catch (error) {
-                    // Session ended or network error - silently ignore
-                    clearInterval(timerIntervalRef.current);
+                    // Use local timer as fallback on error
+                    const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000);
+                    const remaining = Math.max(0, (selectedDuration * 60) - elapsed);
+                    setElapsedTime(elapsed);
+                    setRemainingTime(remaining);
+                    setIsTimeWarning(remaining <= 300 && remaining > 0);
+                    setIsTimeUp(remaining <= 0);
                 }
             }, 1000);
             
-            return () => clearInterval(timerIntervalRef.current);
+            return () => {
+                clearInterval(timerIntervalRef.current);
+                timerStartRef.current = null;
+            };
         }
-    }, [interviewStarted, sessionId]);
+    }, [interviewStarted, sessionId, selectedDuration]);
 
     // Recording timer
     useEffect(() => {
@@ -797,6 +820,7 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     const speakText = async (text) => {
         if (!enableTTS) return;
         
+        // Set speaking state immediately for responsiveness
         setIsSpeaking(true);
         setAvatarState('speaking');
         
@@ -819,6 +843,7 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                     const audioBlob = await response.blob();
                     const audioUrl = URL.createObjectURL(audioBlob);
                     const audio = new Audio(audioUrl);
+                    audio.preload = 'auto';
                     
                     audio.onended = () => {
                         setIsSpeaking(false);
@@ -831,7 +856,11 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                         URL.revokeObjectURL(audioUrl);
                     };
                     
-                    audio.play();
+                    // Play immediately without waiting
+                    audio.play().catch(() => {
+                        setIsSpeaking(false);
+                        setAvatarState('idle');
+                    });
                 } else {
                     // Fallback to browser TTS
                     speakWithBrowserTTS(text);
@@ -1818,6 +1847,61 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                     )}
                                 </div>
                                 
+                                <div className="form-group interviewer-selection">
+                                    <label>👤 Choose Your Interviewer:</label>
+                                    <div className="interviewer-cards">
+                                        <motion.button
+                                            className={`interviewer-card male ${interviewerGender === 'male' ? 'active' : ''}`}
+                                            onClick={() => setInterviewerGender('male')}
+                                            whileHover={{ scale: 1.02, y: -4 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <div className="interviewer-preview">
+                                                <AvatarPreview gender="male" isSelected={interviewerGender === 'male'} />
+                                            </div>
+                                            <div className="interviewer-info">
+                                                <span className="interviewer-name">James</span>
+                                                <span className="interviewer-role">Senior Technical Interviewer</span>
+                                                <span className="interviewer-voice">🎙️ Professional Male Voice</span>
+                                            </div>
+                                            {interviewerGender === 'male' && (
+                                                <motion.div 
+                                                    className="selected-badge"
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                >
+                                                    ✓ Selected
+                                                </motion.div>
+                                            )}
+                                        </motion.button>
+                                        
+                                        <motion.button
+                                            className={`interviewer-card female ${interviewerGender === 'female' ? 'active' : ''}`}
+                                            onClick={() => setInterviewerGender('female')}
+                                            whileHover={{ scale: 1.02, y: -4 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <div className="interviewer-preview">
+                                                <AvatarPreview gender="female" isSelected={interviewerGender === 'female'} />
+                                            </div>
+                                            <div className="interviewer-info">
+                                                <span className="interviewer-name">Sarah</span>
+                                                <span className="interviewer-role">Senior Technical Interviewer</span>
+                                                <span className="interviewer-voice">🎙️ Professional Female Voice</span>
+                                            </div>
+                                            {interviewerGender === 'female' && (
+                                                <motion.div 
+                                                    className="selected-badge"
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                >
+                                                    ✓ Selected
+                                                </motion.div>
+                                            )}
+                                        </motion.button>
+                                    </div>
+                                </div>
+                                
                                 <div className="form-group">
                                     <label>⏱️ Interview Duration:</label>
                                     <div className="duration-buttons">
@@ -1871,20 +1955,23 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                                     onChange={(e) => setEdgeVoice(e.target.value)}
                                                     className="voice-select"
                                                 >
-                                                    <optgroup label="Female Voices">
-                                                        <option value="en-US-AriaNeural">Aria (US) - Conversational</option>
-                                                        <option value="en-US-JennyNeural">Jenny (US) - Professional</option>
-                                                        <option value="en-US-MichelleNeural">Michelle (US) - Natural</option>
-                                                        <option value="en-GB-SoniaNeural">Sonia (UK) - British</option>
-                                                        <option value="en-AU-NatashaNeural">Natasha (AU) - Australian</option>
-                                                        <option value="en-IN-NeerjaNeural">Neerja (IN) - Indian</option>
-                                                    </optgroup>
-                                                    <optgroup label="Male Voices">
-                                                        <option value="en-US-GuyNeural">Guy (US) - Conversational</option>
-                                                        <option value="en-US-DavisNeural">Davis (US) - Professional</option>
-                                                        <option value="en-US-ChristopherNeural">Christopher (US) - Formal</option>
-                                                        <option value="en-US-EricNeural">Eric (US) - Friendly</option>
-                                                    </optgroup>
+                                                    {interviewerGender === 'female' ? (
+                                                        <optgroup label="Female Voices">
+                                                            <option value="en-US-AriaNeural">Aria (US) - Conversational</option>
+                                                            <option value="en-US-JennyNeural">Jenny (US) - Professional</option>
+                                                            <option value="en-US-MichelleNeural">Michelle (US) - Natural</option>
+                                                            <option value="en-GB-SoniaNeural">Sonia (UK) - British</option>
+                                                            <option value="en-AU-NatashaNeural">Natasha (AU) - Australian</option>
+                                                            <option value="en-IN-NeerjaNeural">Neerja (IN) - Indian</option>
+                                                        </optgroup>
+                                                    ) : (
+                                                        <optgroup label="Male Voices">
+                                                            <option value="en-US-GuyNeural">Guy (US) - Conversational</option>
+                                                            <option value="en-US-DavisNeural">Davis (US) - Professional</option>
+                                                            <option value="en-US-ChristopherNeural">Christopher (US) - Formal</option>
+                                                            <option value="en-US-EricNeural">Eric (US) - Friendly</option>
+                                                        </optgroup>
+                                                    )}
                                                 </select>
                                             </div>
                                         )}
@@ -2054,6 +2141,7 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                 remainingTime={remainingTime}
                 isTimeWarning={isTimeWarning}
                 avatarState={avatarState}
+                avatarInfo={avatarInfo}
                 settings={settings}
                 enableTTS={enableTTS}
             />

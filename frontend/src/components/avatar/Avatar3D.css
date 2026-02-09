@@ -84,6 +84,8 @@
 .avatar3d-canvas-container {
   width: 100%;
   height: 100%;
+  flex: 1;
+  min-height: 0;
   border-radius: 16px;
   overflow: hidden;
   z-index: 2;
@@ -383,4 +385,49 @@
     max-width: 220px;
     font-size: 11px;
   }
+}
+
+/* ==========================================
+   AVATAR PREVIEW COMPONENT
+   Mini 3D avatar for selection UI
+   ========================================== */
+
+.avatar-preview-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.avatar-preview-container canvas {
+  border-radius: 12px;
+}
+
+/* Glow effect for preview */
+.preview-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.avatar-preview-container.selected .preview-glow {
+  opacity: 1;
+}
+
+.preview-glow.male {
+  box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.3);
+}
+
+.preview-glow.female {
+  box-shadow: inset 0 0 30px rgba(236, 72, 153, 0.3);
+}
+
+/* Subtle animation on hover */
+.avatar-preview-container:hover {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
 }
