@@ -1,0 +1,244 @@
+.practice-goals {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 1.5rem;
+}
+
+.goals-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    color: #a5b4fc;
+}
+
+.goals-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+/* Streak Display */
+.streak-display {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.1));
+    border: 1px solid rgba(249, 115, 22, 0.2);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.streak-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.streak-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.streak-count {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #f97316;
+}
+
+.streak-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.streak-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(249, 115, 22, 0.2);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f97316;
+}
+
+/* Goal Section */
+.goal-section {
+    margin-bottom: 1.25rem;
+}
+
+.goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.goal-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.goal-adjuster {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.adjust-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.adjust-btn:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+
+.adjust-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.goal-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    min-width: 100px;
+    text-align: center;
+}
+
+/* Progress */
+.goal-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.progress-fill.weekly {
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.progress-fill.monthly {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.progress-count {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.progress-percent {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.progress-percent.complete {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #10b981;
+}
+
+/* Motivation */
+.motivation-message {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    margin-top: 0.5rem;
+}
+
+.motivation-message p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Light theme */
+[data-theme="light"] .practice-goals {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .goals-header h3 {
+    color: #1f2937;
+}
+
+[data-theme="light"] .streak-display {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(234, 88, 12, 0.05));
+}
+
+[data-theme="light"] .streak-label {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .goal-label {
+    color: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] .goal-value {
+    color: #1f2937;
+}
+
+[data-theme="light"] .adjust-btn {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .progress-bar {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .progress-count {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .progress-percent {
+    color: #1f2937;
+}
+
+[data-theme="light"] .motivation-message p {
+    color: rgba(0, 0, 0, 0.6);
+}

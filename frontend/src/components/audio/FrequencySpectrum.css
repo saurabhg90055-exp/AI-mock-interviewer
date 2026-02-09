@@ -1,0 +1,62 @@
+.frequency-spectrum {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.spectrum-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.spectrum-header svg {
+    color: #a5b4fc;
+}
+
+.peak-freq {
+    margin-left: auto;
+    font-weight: 500;
+    color: #a5b4fc;
+}
+
+.spectrum-container {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spectrum-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+}
+
+/* Sizes */
+.frequency-spectrum.small .spectrum-container {
+    padding: 0.5rem;
+    border-radius: 8px;
+}
+
+.frequency-spectrum.large .spectrum-container {
+    padding: 1rem;
+    border-radius: 16px;
+}
+
+/* Light theme */
+[data-theme="light"] .spectrum-container {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .spectrum-header {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .peak-freq {
+    color: #6366f1;
+}

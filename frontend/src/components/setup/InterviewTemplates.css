@@ -1,0 +1,212 @@
+.interview-templates {
+    padding: 1rem 0;
+}
+
+.templates-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.templates-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 0.5rem;
+}
+
+.templates-header p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+/* Grid */
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+/* Card */
+.template-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 1.5rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.template-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.template-card.selected {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.08);
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+}
+
+.selected-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+/* Icon */
+.template-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Content */
+.template-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.template-desc {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Meta */
+.template-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.difficulty-tag {
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.difficulty-tag.easy {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.difficulty-tag.medium {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.difficulty-tag.hard {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+/* Topics */
+.template-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.topic-tag {
+    padding: 0.3rem 0.7rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Features */
+.template-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.feature-item svg {
+    color: #10b981;
+}
+
+/* Light theme */
+[data-theme="light"] .templates-header h3 {
+    color: #1f2937;
+}
+
+[data-theme="light"] .templates-header p {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .template-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .template-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .template-card.selected {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+[data-theme="light"] .template-name {
+    color: #1f2937;
+}
+
+[data-theme="light"] .template-desc {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .meta-item {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .topic-tag {
+    background: rgba(0, 0, 0, 0.06);
+    color: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] .feature-item {
+    color: rgba(0, 0, 0, 0.5);
+}

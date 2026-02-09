@@ -1,0 +1,183 @@
+.lighting-indicator {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lighting-indicator.excellent {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.lighting-indicator.good {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.lighting-indicator.fair {
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+.lighting-indicator.poor {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Header */
+.lighting-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.lighting-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lighting-indicator.excellent .lighting-icon {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.lighting-indicator.good .lighting-icon {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+
+.lighting-indicator.fair .lighting-icon {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.lighting-indicator.poor .lighting-icon {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.lighting-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.lighting-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lighting-quality {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.lighting-quality.excellent {
+    color: #10b981;
+}
+
+.lighting-quality.good {
+    color: #a5b4fc;
+}
+
+.lighting-quality.fair {
+    color: #fbbf24;
+}
+
+.lighting-quality.poor {
+    color: #ef4444;
+}
+
+.lighting-percent {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Bar */
+.lighting-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.lighting-bar.full {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.lighting-fill {
+    height: 100%;
+    border-radius: inherit;
+    transition: background-color 0.3s ease;
+}
+
+.lighting-indicator.excellent .lighting-fill {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.lighting-indicator.good .lighting-fill {
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.lighting-indicator.fair .lighting-fill {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.lighting-indicator.poor .lighting-fill {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* Zones */
+.lighting-zones {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    pointer-events: none;
+}
+
+.zone {
+    flex: 1;
+    border-right: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.zone:last-child {
+    border-right: none;
+}
+
+/* Recommendation */
+.lighting-recommendation {
+    margin: 0.5rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+}
+
+/* Compact */
+.lighting-indicator.compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.lighting-indicator.compact .lighting-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.lighting-indicator.compact .lighting-bar {
+    flex: 1;
+    height: 4px;
+}

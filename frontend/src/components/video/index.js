@@ -16,3 +16,13 @@ export { default as LanguageSelector,
          useLanguage, 
          SUPPORTED_LANGUAGES, 
          UI_TRANSLATIONS } from './LanguageSelector';
+
+// Phase 2 - Enhanced Video Mode
+export { default as ExpressionPanel } from './ExpressionPanel';
+export { default as PictureInPicture } from './PictureInPicture';
+
+// Phase 3 - Video Mode Complete
+export { default as PostureDetection } from './PostureDetection';
+export { default as LightingIndicator } from './LightingIndicator';
+export { default as WarmupMode } from './WarmupMode';
+export { default as SplitViewToggle } from './SplitViewToggle';

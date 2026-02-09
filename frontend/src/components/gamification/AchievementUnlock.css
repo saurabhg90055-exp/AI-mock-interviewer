@@ -1,0 +1,170 @@
+.achievement-unlock-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+}
+
+.achievement-unlock-modal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 3rem;
+    background: linear-gradient(180deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 35, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 32px;
+    text-align: center;
+    max-width: 400px;
+    overflow: visible;
+}
+
+.achievement-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Particles */
+.particles {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* Badge */
+.achievement-badge {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    transform-style: preserve-3d;
+}
+
+.unlock-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.achievement-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 0.75rem;
+}
+
+.achievement-description {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+}
+
+.achievement-reward {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.reward-xp {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fbbf24;
+}
+
+.rarity-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.achievement-actions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.share-btn, .dismiss-btn {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.share-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.share-btn:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+}
+
+.dismiss-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+}
+
+.dismiss-btn:hover {
+    box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
+}
+
+/* Light theme */
+[data-theme="light"] .achievement-unlock-modal {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 240, 245, 0.98));
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .unlock-title {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .achievement-name {
+    color: #1f2937;
+}
+
+[data-theme="light"] .achievement-description {
+    color: #4b5563;
+}
+
+[data-theme="light"] .share-btn {
+    border-color: rgba(0, 0, 0, 0.15);
+    color: #4b5563;
+}

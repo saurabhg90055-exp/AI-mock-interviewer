@@ -13,10 +13,17 @@ function AvatarModel({
   state = 'idle', 
   audioLevel = 0, 
   expression = 'neutral',
-  isSpeaking = false
+  isSpeaking = false,
+  gender = 'male'
 }) {
   const group = useRef();
-  const { scene } = useGLTF('/models/avatar/interviewer.glb');
+  
+  // Select model based on gender
+  const modelPath = gender === 'female' 
+    ? '/models/avatar/interviewer-female.glb' 
+    : '/models/avatar/interviewer.glb';
+  
+  const { scene } = useGLTF(modelPath);
   const mouthOpenRef = useRef(0);
   const lastBlinkTime = useRef(0);
   const smoothedAudioLevel = useRef(0);
@@ -349,7 +356,8 @@ const Avatar3D = ({
   videoMode = false,
   showFeedback = false,
   interviewerName = 'ARIA',
-  isSpeaking = false
+  isSpeaking = false,
+  gender = 'male'
 }) => {
   const containerRef = useRef(null);
   const [adaptiveState, setAdaptiveState] = useState(state);
@@ -498,6 +506,7 @@ const Avatar3D = ({
               audioLevel={audioLevel}
               expression={expression}
               isSpeaking={isSpeaking || state === 'speaking'}
+              gender={gender}
             />
             <Environment preset="apartment" background={false} />
           </Suspense>
@@ -634,7 +643,8 @@ const Avatar3D = ({
   );
 };
 
-// Preload the model
+// Preload both male and female models
 useGLTF.preload('/models/avatar/interviewer.glb');
+useGLTF.preload('/models/avatar/interviewer-female.glb');
 
 export default Avatar3D;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // New enhanced components
@@ -112,6 +112,36 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
     const [avatarState, setAvatarState] = useState('idle'); // 'idle' | 'speaking' | 'listening' | 'thinking' | 'happy' | 'concerned'
     const [soundEnabled, setSoundEnabled] = useState(settings?.soundEffects ?? true);
     const [visualizerMode, setVisualizerMode] = useState('bars'); // 'bars' | 'wave' | 'circular' | 'orb'
+    
+    // Determine avatar gender and name based on selected voice
+    const avatarInfo = useMemo(() => {
+        // Female voices from Edge TTS
+        const femaleVoices = [
+            'en-US-AriaNeural', 'en-US-JennyNeural', 'en-US-MichelleNeural',
+            'en-GB-SoniaNeural', 'en-AU-NatashaNeural', 'en-IN-NeerjaNeural'
+        ];
+        
+        const isFemale = femaleVoices.includes(edgeVoice);
+        
+        // Get interviewer name from voice
+        const voiceNames = {
+            'en-US-AriaNeural': 'ARIA',
+            'en-US-JennyNeural': 'JENNY',
+            'en-US-MichelleNeural': 'MICHELLE',
+            'en-GB-SoniaNeural': 'SONIA',
+            'en-AU-NatashaNeural': 'NATASHA',
+            'en-IN-NeerjaNeural': 'NEERJA',
+            'en-US-GuyNeural': 'GUY',
+            'en-US-DavisNeural': 'DAVIS',
+            'en-US-ChristopherNeural': 'CHRIS',
+            'en-US-EricNeural': 'ERIC'
+        };
+        
+        return {
+            gender: isFemale ? 'female' : 'male',
+            name: voiceNames[edgeVoice] || (isFemale ? 'ARIA' : 'ALEX')
+        };
+    }, [edgeVoice]);
     
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]);
@@ -2098,31 +2128,47 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                 </div>
             </div>
             
-            {/* AI Avatar Section */}
-            <motion.div 
-                className="ai-avatar-section"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-            >
-                {/* 3D Avatar with GLB model - fallback to 2D if WebGL unavailable */}
-                <Avatar3D 
-                    state={avatarState}
-                    audioLevel={audioLevel}
-                    score={currentScore}
-                    size="large"
-                    interviewerName="ARIA"
-                />
-                {isSpeaking && (
-                    <AudioVisualizer 
-                        mode="circular"
-                        isActive={true}
-                        audioLevel={0.5 + Math.random() * 0.3}
-                        color="primary"
-                        size="medium"
-                    />
-                )}
-            </motion.div>
+            {/* Two Column Layout - Avatar Left, Content Right */}
+            <div className="interview-main-grid">
+                {/* Left Side - AI Avatar Panel */}
+                <motion.aside 
+                    className="avatar-panel"
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                >
+                    <div className="ai-avatar-section">
+                        {/* 3D Avatar with GLB model - gender based on voice selection */}
+                        <Avatar3D 
+                            state={avatarState}
+                            audioLevel={audioLevel}
+                            score={currentScore}
+                            size="large"
+                            interviewerName={avatarInfo.name}
+                            gender={avatarInfo.gender}
+                            isSpeaking={isSpeaking}
+                        />
+                        {isSpeaking && (
+                            <AudioVisualizer 
+                                mode="circular"
+                                isActive={true}
+                                audioLevel={0.5 + Math.random() * 0.3}
+                                color="primary"
+                                size="medium"
+                            />
+                        )}
+                    </div>
+                    
+                    {/* Avatar Name Badge */}
+                    <div className="avatar-name-badge">
+                        <span className="avatar-status-dot" />
+                        <span className="avatar-name">{avatarInfo.name}</span>
+                        <span className="avatar-role">AI Interviewer</span>
+                    </div>
+                </motion.aside>
+                
+                {/* Right Side - Content Panel */}
+                <div className="content-panel">
             
             {/* Phase 6: Live Coaching Panel */}
             <AnimatePresence>
@@ -2407,6 +2453,8 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                     </motion.div>
                 )}
             </motion.div>
+                </div> {/* End content-panel */}
+            </div> {/* End interview-main-grid */}
         </div>
     );
 };

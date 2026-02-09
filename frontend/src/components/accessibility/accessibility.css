@@ -1,0 +1,122 @@
+/* Screen reader only class */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip links */
+.skip-links {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+}
+
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    padding: 1rem 1.5rem;
+    background: #6366f1;
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 0 0 8px 0;
+    z-index: 9999;
+}
+
+.skip-link:focus {
+    left: 0;
+}
+
+/* Focus styles */
+.show-focus *:focus {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.show-focus *:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.show-focus *:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+/* High contrast mode */
+.high-contrast {
+    --text-color: #ffffff !important;
+    --bg-color: #000000 !important;
+}
+
+.high-contrast * {
+    border-color: #ffffff !important;
+}
+
+.high-contrast button,
+.high-contrast a,
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+    border: 2px solid currentColor !important;
+}
+
+/* Reduce motion */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* Color blind mode filters */
+[data-color-blind-mode="protanopia"] {
+    filter: url('#protanopia-filter');
+}
+
+[data-color-blind-mode="deuteranopia"] {
+    filter: url('#deuteranopia-filter');
+}
+
+[data-color-blind-mode="tritanopia"] {
+    filter: url('#tritanopia-filter');
+}
+
+/* Font scaling */
+html {
+    font-size: var(--base-font-size, 16px);
+}
+
+/* Improved focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Touch targets - minimum 44x44px */
+@media (pointer: coarse) {
+    button,
+    a,
+    input[type="checkbox"],
+    input[type="radio"],
+    [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

@@ -1,0 +1,212 @@
+.export-report {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 1.5rem;
+}
+
+.export-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: #a5b4fc;
+}
+
+.export-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.export-desc {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+}
+
+/* Section Selector */
+.section-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.selector-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.25rem;
+}
+
+.section-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.section-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.section-btn.selected {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: white;
+}
+
+.section-btn span {
+    flex: 1;
+}
+
+.check-icon {
+    color: #10b981;
+}
+
+/* Preview */
+.export-preview {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.page-count {
+    color: #a5b4fc;
+}
+
+.preview-content {
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.preview-page {
+    width: 120px;
+    height: 160px;
+    background: white;
+    border-radius: 4px;
+    padding: 0.75rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.preview-title {
+    font-size: 0.4rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.preview-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 0.25rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.preview-section {
+    margin-bottom: 0.35rem;
+}
+
+.section-line {
+    height: 2px;
+    background: #e5e7eb;
+    border-radius: 1px;
+    margin-bottom: 0.15rem;
+}
+
+.section-line.short {
+    width: 60%;
+}
+
+/* Export Button */
+.export-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-btn:hover:not(:disabled) {
+    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+}
+
+.export-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.export-btn.complete {
+    background: linear-gradient(135deg, #10b981, #34d399);
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Light theme */
+[data-theme="light"] .export-report {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .export-header h3 {
+    color: #1f2937;
+}
+
+[data-theme="light"] .export-desc {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .section-btn {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #374151;
+}
+
+[data-theme="light"] .section-btn.selected {
+    color: #1f2937;
+}
+
+[data-theme="light"] .export-preview {
+    background: rgba(0, 0, 0, 0.05);
+}

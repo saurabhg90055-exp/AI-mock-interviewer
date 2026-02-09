@@ -1,0 +1,261 @@
+/* Picture-in-Picture Styles */
+.pip-container {
+    position: fixed;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+    z-index: 1000;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.pip-container.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.pip-container.small {
+    border-radius: 12px;
+}
+
+.pip-container.large {
+    border-radius: 20px;
+}
+
+/* Video Wrapper */
+.pip-video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.pip-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror effect */
+}
+
+/* Eye Contact Guide */
+.eye-guide-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.eye-guide-target {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.eye-guide-ring {
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: pulse-ring 2s ease-in-out infinite;
+}
+
+.eye-guide-target.good .eye-guide-ring {
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.eye-guide-target.medium .eye-guide-ring {
+    border-color: rgba(234, 179, 8, 0.5);
+}
+
+.eye-guide-target.low .eye-guide-ring {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+@keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+}
+
+.eye-guide-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+}
+
+.eye-guide-target.good .eye-guide-center {
+    background: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+}
+
+.eye-guide-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* Face Detection Indicator */
+.face-detection-indicator {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.8);
+    border-radius: 8px;
+    color: white;
+}
+
+.face-detection-indicator.detected {
+    background: rgba(34, 197, 94, 0.8);
+}
+
+/* Controls Overlay */
+.pip-controls {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+}
+
+.pip-drag-handle {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: grab;
+    color: white;
+}
+
+.pip-drag-handle:active {
+    cursor: grabbing;
+}
+
+.pip-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pip-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.pip-close:hover {
+    background: rgba(239, 68, 68, 0.8);
+    border-color: #ef4444;
+}
+
+/* Corner Buttons */
+.pip-corner-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.corner-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.corner-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.corner-btn.active {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: #818cf8;
+    color: #818cf8;
+}
+
+/* Eye Contact Meter */
+.pip-eye-meter {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.pip-eye-meter-fill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pip-container {
+        width: 120px !important;
+        height: 90px !important;
+    }
+    
+    .pip-container.large {
+        width: 180px !important;
+        height: 135px !important;
+    }
+    
+    .eye-guide-overlay {
+        display: none;
+    }
+    
+    .pip-corner-buttons {
+        display: none;
+    }
+}
+
+/* Light Theme */
+[data-theme="light"] .pip-container {
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .pip-container.dragging {
+    border-color: rgba(79, 70, 229, 0.5);
+}

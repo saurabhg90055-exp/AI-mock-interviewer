@@ -1,0 +1,212 @@
+.topic-preview {
+    padding: 1rem 0;
+}
+
+.topic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Card */
+.topic-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.topic-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.topic-card.expanded {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.topic-card.selected {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.08);
+}
+
+/* Header */
+.topic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    gap: 1rem;
+}
+
+.topic-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.topic-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    margin: 0 0 0.25rem;
+}
+
+.topic-desc {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topic-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.select-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.select-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: #6366f1;
+}
+
+.select-btn.selected {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-color: transparent;
+    color: white;
+}
+
+.expand-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Details */
+.topic-details {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.details-meta {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem 0;
+}
+
+.meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sample-questions {
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.sample-questions h5 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #a5b4fc;
+    margin: 0 0 0.75rem;
+}
+
+.sample-questions ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sample-questions li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.5;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+}
+
+.sample-questions li svg {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Light theme */
+[data-theme="light"] .topic-card {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .topic-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .topic-card.selected {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+[data-theme="light"] .topic-name {
+    color: #1f2937;
+}
+
+[data-theme="light"] .topic-desc {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .select-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] .expand-btn {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .sample-questions li {
+    background: rgba(0, 0, 0, 0.02);
+    color: #374151;
+}

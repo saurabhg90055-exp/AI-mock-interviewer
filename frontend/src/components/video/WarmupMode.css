@@ -1,0 +1,282 @@
+.warmup-mode {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 2rem;
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.warmup-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: #a5b4fc;
+    position: relative;
+}
+
+.warmup-header h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.warmup-header .skip-btn {
+    position: absolute;
+    right: 0;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.warmup-header .skip-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Intro */
+.warmup-intro p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 1.5rem;
+    line-height: 1.6;
+}
+
+.checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.check-item.ready {
+    color: #10b981;
+}
+
+.check-item.ready svg {
+    color: #10b981;
+}
+
+.start-warmup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.start-warmup-btn:hover {
+    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+}
+
+/* Active */
+.warmup-active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* Timer Circle */
+.timer-circle {
+    position: relative;
+    width: 140px;
+    height: 140px;
+}
+
+.timer-circle svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+
+.timer-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 6;
+}
+
+.timer-progress {
+    fill: none;
+    stroke: url(#gradient);
+    stroke: #6366f1;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+}
+
+/* Prompt */
+.warmup-prompt {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 14px;
+    text-align: left;
+}
+
+.warmup-prompt svg {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    color: #a5b4fc;
+}
+
+.warmup-prompt p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Controls */
+.warmup-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.warmup-controls .control-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.warmup-controls .control-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.warmup-controls .control-btn.main {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+}
+
+.warmup-controls .control-btn.main.paused {
+    background: linear-gradient(135deg, #10b981, #34d399);
+}
+
+/* Complete */
+.warmup-mode.complete {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.complete-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #10b981;
+}
+
+.warmup-mode.complete h3 {
+    font-size: 1.5rem;
+    color: white;
+    margin: 0 0 0.5rem;
+}
+
+.warmup-mode.complete p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 1.5rem;
+}
+
+.start-interview-btn {
+    padding: 1rem 2.5rem;
+    background: linear-gradient(135deg, #10b981, #34d399);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.start-interview-btn:hover {
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+}
+
+/* Light theme */
+[data-theme="light"] .warmup-mode {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .warmup-header h3 {
+    color: #1f2937;
+}
+
+[data-theme="light"] .warmup-intro p {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .timer-text {
+    color: #1f2937;
+}
+
+[data-theme="light"] .warmup-prompt p {
+    color: #374151;
+}
+
+[data-theme="light"] .warmup-mode.complete h3 {
+    color: #1f2937;
+}
+
+[data-theme="light"] .warmup-mode.complete p {
+    color: rgba(0, 0, 0, 0.6);
+}

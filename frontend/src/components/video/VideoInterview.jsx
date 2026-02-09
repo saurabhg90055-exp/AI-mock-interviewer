@@ -4,7 +4,8 @@ import {
     Camera, CameraOff, Mic, MicOff, Video, VideoOff, 
     Phone, Settings, Maximize2, Minimize2, Eye, 
     AlertCircle, CheckCircle, TrendingUp, Brain,
-    MessageSquare, Clock, Zap, Monitor, Subtitles, Download
+    MessageSquare, Clock, Zap, Monitor, Subtitles, Download,
+    User, BarChart3
 } from 'lucide-react';
 import { AIAvatar, Avatar3D } from '../avatar';
 import { AudioVisualizer } from '../audio';
@@ -17,6 +18,8 @@ import ScreenShare from './ScreenShare';
 import RecordingDownload from './RecordingDownload';
 import LiveCaptions from './LiveCaptions';
 import LanguageSelector from './LanguageSelector';
+import ExpressionPanel from './ExpressionPanel';
+import PictureInPicture from './PictureInPicture';
 import useFaceDetection from '../../hooks/useFaceDetection';
 import useVideoRecording from '../../hooks/useVideoRecording';
 import './VideoInterview.css';
@@ -69,6 +72,8 @@ const VideoInterview = ({
     const [networkQuality, setNetworkQuality] = useState(null);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [screenStream, setScreenStream] = useState(null);
+    const [showPiP, setShowPiP] = useState(true);
+    const [showExpressionPanel, setShowExpressionPanel] = useState(true);
     
     // Refs
     const videoRef = useRef(null);
@@ -430,9 +435,36 @@ const VideoInterview = ({
                     >
                         {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
+                    <button
+                        className={`icon-btn ${showPiP ? 'active' : ''}`}
+                        onClick={() => setShowPiP(!showPiP)}
+                        title={showPiP ? 'Hide Self View' : 'Show Self View'}
+                    >
+                        <User size={18} />
+                    </button>
+                    <button
+                        className={`icon-btn ${showExpressionPanel ? 'active' : ''}`}
+                        onClick={() => setShowExpressionPanel(!showExpressionPanel)}
+                        title={showExpressionPanel ? 'Hide Expression Panel' : 'Show Expression Panel'}
+                    >
+                        <BarChart3 size={18} />
+                    </button>
                 </div>
             </div>
             
+            {/* PictureInPicture Self-View */}
+            {showPiP && (
+                <PictureInPicture
+                    stream={stream}
+                    faceDetected={faceDetected}
+                    eyeContactScore={expressionData.eyeContact}
+                    initialPosition="bottom-right"
+                    initialSize="medium"
+                    showEyeGuide={true}
+                    isRecording={isRecording}
+                    onClose={() => setShowPiP(false)}
+                />
+            )}
             {/* Main Video Area */}
             <div className="video-main">
                 {/* AI Interviewer Side */}
@@ -567,7 +599,15 @@ const VideoInterview = ({
                         )}
                     </div>
                     
-                    {/* Expression Stats */}
+                    {/* Expression Stats - Basic or Enhanced */}
+                    {showExpressionPanel ? (
+                        <ExpressionPanel
+                            expressionData={expressionData}
+                            faceDetected={faceDetected}
+                            isRecording={isRecording}
+                            compact={false}
+                        />
+                    ) : (
                     <div className="expression-stats">
                         <div className="stat-item">
                             <Eye size={14} />
@@ -602,6 +642,7 @@ const VideoInterview = ({
                             <span className="emotion-label">{expressionData.emotion}</span>
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
             
