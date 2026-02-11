@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // New enhanced components
-import { AIAvatar, Avatar3D, AvatarPreview } from "./components/avatar";
+import { AIAvatar, Avatar3D } from "./components/avatar";
 import { AudioVisualizer } from "./components/audio";
 import { RecordButton, Toast, ScoreDisplay, ScoreBadge, TypingIndicator } from "./components/ui";
 import { VideoInterview, VideoPreview, VideoInterviewSummary } from "./components/video";
@@ -952,7 +952,7 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
         if (soundEnabled) soundEffects.play('aiSpeaking');
         
         if (ttsEngine === 'edge') {
-            // Use Edge TTS (Microsoft Neural Voices - higher quality)
+            // Use Edge TTS with streaming audio for faster playback
             try {
                 const response = await fetch(`${API_URL}/tts/edge`, {
                     method: 'POST',
@@ -963,28 +963,32 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                     })
                 });
                 
-                if (response.ok) {
-                    const audioBlob = await response.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    audio.preload = 'auto';
+                if (response.ok && response.body) {
+                    // Use streaming approach for faster audio playback
+                    const reader = response.body.getReader();
+                    const chunks = [];
                     
-                    audio.onended = () => {
-                        setIsSpeaking(false);
-                        setAvatarState('idle');
-                        URL.revokeObjectURL(audioUrl);
-                    };
-                    audio.onerror = () => {
-                        setIsSpeaking(false);
-                        setAvatarState('idle');
-                        URL.revokeObjectURL(audioUrl);
-                    };
+                    // Read chunks as they arrive
+                    let firstChunkReceived = false;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        
+                        // Start playing as soon as we have enough data (~50KB minimum for smooth playback)
+                        if (!firstChunkReceived && chunks.reduce((sum, c) => sum + c.length, 0) > 50000) {
+                            firstChunkReceived = true;
+                            // Create blob from what we have and start playing
+                            const partialBlob = new Blob(chunks, { type: 'audio/mpeg' });
+                            playAudioBlob(partialBlob, false);
+                        }
+                    }
                     
-                    // Play immediately without waiting
-                    audio.play().catch(() => {
-                        setIsSpeaking(false);
-                        setAvatarState('idle');
-                    });
+                    // If we never got enough data for early playback, play the full audio now
+                    if (!firstChunkReceived) {
+                        const audioBlob = new Blob(chunks, { type: 'audio/mpeg' });
+                        playAudioBlob(audioBlob, true);
+                    }
                 } else {
                     // Fallback to browser TTS
                     speakWithBrowserTTS(text);
@@ -998,6 +1002,31 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
             // Use Web Speech API (browser built-in TTS - free & reliable)
             speakWithBrowserTTS(text);
         }
+    };
+    
+    // Helper function to play audio blob
+    const playAudioBlob = (blob, handleEnd = true) => {
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.preload = 'auto';
+        
+        if (handleEnd) {
+            audio.onended = () => {
+                setIsSpeaking(false);
+                setAvatarState('idle');
+                URL.revokeObjectURL(audioUrl);
+            };
+            audio.onerror = () => {
+                setIsSpeaking(false);
+                setAvatarState('idle');
+                URL.revokeObjectURL(audioUrl);
+            };
+        }
+        
+        audio.play().catch(() => {
+            setIsSpeaking(false);
+            setAvatarState('idle');
+        });
     };
     
     const speakWithBrowserTTS = (text) => {
@@ -1270,72 +1299,15 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                 ]);
             }
             if (data.ai_response) {
+                // Show text immediately for responsiveness
+                setConversationHistory(prev => [
+                    ...prev,
+                    { role: "assistant", content: data.ai_response }
+                ]);
+                
+                // Start TTS in parallel (non-blocking)
                 if (enableTTS) {
-                    // Show text AND start audio together for sync
-                    // Fetch audio first, then show text when audio starts playing
-                    try {
-                        const response = await fetch(`${API_URL}/tts/edge`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                text: data.ai_response,
-                                voice: edgeVoice 
-                            })
-                        });
-                        
-                        if (response.ok) {
-                            const audioBlob = await response.blob();
-                            const audioUrl = URL.createObjectURL(audioBlob);
-                            const audio = new Audio(audioUrl);
-                            audio.preload = 'auto';
-                            
-                            audio.onended = () => {
-                                setIsSpeaking(false);
-                                setAvatarState('idle');
-                                URL.revokeObjectURL(audioUrl);
-                            };
-                            audio.onerror = () => {
-                                setIsSpeaking(false);
-                                setAvatarState('idle');
-                                URL.revokeObjectURL(audioUrl);
-                            };
-                            
-                            // Show text AND play audio at the same moment
-                            setConversationHistory(prev => [
-                                ...prev,
-                                { role: "assistant", content: data.ai_response }
-                            ]);
-                            setIsSpeaking(true);
-                            setAvatarState('speaking');
-                            if (soundEnabled) soundEffects.play('aiSpeaking');
-                            
-                            audio.play().catch(() => {
-                                setIsSpeaking(false);
-                                setAvatarState('idle');
-                            });
-                        } else {
-                            // Fallback - show text first, then use browser TTS
-                            setConversationHistory(prev => [
-                                ...prev,
-                                { role: "assistant", content: data.ai_response }
-                            ]);
-                            speakWithBrowserTTS(data.ai_response);
-                        }
-                    } catch (error) {
-                        console.error('TTS sync error:', error);
-                        // Fallback - show text first, then use browser TTS
-                        setConversationHistory(prev => [
-                            ...prev,
-                            { role: "assistant", content: data.ai_response }
-                        ]);
-                        speakWithBrowserTTS(data.ai_response);
-                    }
-                } else {
-                    // No TTS - just show text
-                    setConversationHistory(prev => [
-                        ...prev,
-                        { role: "assistant", content: data.ai_response }
-                    ]);
+                    speakText(data.ai_response);
                 }
             }
             if (data.question_number) {
@@ -2099,7 +2071,12 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <div className="interviewer-preview">
-                                                <AvatarPreview gender="male" isSelected={interviewerGender === 'male'} />
+                                                <img 
+                                                    src="/assets/interviewer_male.png" 
+                                                    alt="Male Interviewer"
+                                                    className={`interviewer-img ${interviewerGender === 'male' ? 'selected' : ''}`}
+                                                />
+                                                {interviewerGender === 'male' && <div className="preview-glow male" />}
                                             </div>
                                             <div className="interviewer-info">
                                                 <span className="interviewer-name">James</span>
@@ -2124,7 +2101,12 @@ const AudioRecorder = ({ settings = {}, onInterviewComplete, onRequireAuth }) =>
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <div className="interviewer-preview">
-                                                <AvatarPreview gender="female" isSelected={interviewerGender === 'female'} />
+                                                <img 
+                                                    src="/assets/interviewer_female.png" 
+                                                    alt="Female Interviewer"
+                                                    className={`interviewer-img ${interviewerGender === 'female' ? 'selected' : ''}`}
+                                                />
+                                                {interviewerGender === 'female' && <div className="preview-glow female" />}
                                             </div>
                                             <div className="interviewer-info">
                                                 <span className="interviewer-name">Sarah</span>
